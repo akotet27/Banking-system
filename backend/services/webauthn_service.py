@@ -89,9 +89,22 @@ def finish_registration(
 ) -> dict[str, Any]:
     try:
         from webauthn import verify_registration_response
-        from webauthn.helpers.structs import RegistrationCredential
+        from webauthn.helpers.structs import (
+            AuthenticatorAttestationResponse,
+            PublicKeyCredentialType,
+            RegistrationCredential,
+        )
 
-        cred = RegistrationCredential.parse_raw(json.dumps(credential_response))
+        resp = credential_response["response"]
+        cred = RegistrationCredential(
+            id=credential_response["id"],
+            raw_id=_b64_decode(credential_response["rawId"]),
+            response=AuthenticatorAttestationResponse(
+                client_data_json=_b64_decode(resp["clientDataJSON"]),
+                attestation_object=_b64_decode(resp["attestationObject"]),
+            ),
+            type=PublicKeyCredentialType.PUBLIC_KEY,
+        )
         verification = verify_registration_response(
             credential=cred,
             expected_challenge=_b64_decode(expected_challenge_b64),
@@ -162,7 +175,7 @@ def finish_authentication(
         from webauthn import verify_authentication_response
         from webauthn.helpers.structs import AuthenticationCredential
 
-        cred = AuthenticationCredential.parse_raw(json.dumps(credential_response))
+        cred = AuthenticationCredential.model_validate(credential_response)
         verification = verify_authentication_response(
             credential=cred,
             expected_challenge=expected_challenge.encode(),

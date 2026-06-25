@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { getBalance, getTransactions } from "../api/walletApi";
-import { getPendingSessions, approveSessionSimple, declineSession } from "../api/sessionApi";
+import { getPendingSessions, approveSessionSimple, declineSession, beginApproval, approveSession } from "../api/sessionApi";
+import { listCredentials } from "../api/biometricApi";
+import { prepareGetOptions, assertionToJSON } from "../utils/webauthn";
 import { formatCurrency, timeAgo } from "../utils/validation";
 import {
   SendIcon, ArrowDownIcon, StoreIcon, InboxArrowDownIcon,
@@ -18,31 +20,29 @@ function greeting() {
 }
 
 const TYPE_STYLES = {
-  send:         { color: "bg-orange-100", text: "text-orange-600", Icon: SendIcon,        label: "Sent" },
-  receive:      { color: "bg-emerald-100", text: "text-emerald-600", Icon: InboxArrowDownIcon, label: "Received" },
-  cash_in:      { color: "bg-blue-100",   text: "text-blue-600",   Icon: ArrowDownIcon,   label: "Cash In" },
-  cash_out:     { color: "bg-red-100",    text: "text-red-600",    Icon: BankNoteIcon,    label: "Cash Out" },
-  pay_merchant: { color: "bg-purple-100", text: "text-purple-600", Icon: StoreIcon,       label: "Payment" },
+  send_money:   { color: "bg-orange-100 dark:bg-orange-900/20", text: "text-orange-600 dark:text-orange-400", Icon: SendIcon,             label: "Sent" },
+  receive:      { color: "bg-emerald-100 dark:bg-emerald-900/20", text: "text-emerald-600 dark:text-emerald-400", Icon: InboxArrowDownIcon, label: "Received" },
+  cash_in:      { color: "bg-blue-100 dark:bg-blue-900/20",   text: "text-blue-600 dark:text-blue-400",   Icon: ArrowDownIcon,         label: "Cash In" },
+  cash_out:     { color: "bg-red-100 dark:bg-red-900/20",     text: "text-red-600 dark:text-red-400",     Icon: BankNoteIcon,          label: "Cash Out" },
+  pay_merchant: { color: "bg-purple-100 dark:bg-purple-900/20", text: "text-purple-600 dark:text-purple-400", Icon: StoreIcon,           label: "Payment" },
 };
 
 function txStyle(t, userId) {
-  if (t.transaction_type === "send") return t.sender_id === userId ? TYPE_STYLES.send : TYPE_STYLES.receive;
-  return TYPE_STYLES[t.transaction_type] ?? TYPE_STYLES.send;
+  if (t.type === "send_money") return t.initiator_id === userId ? TYPE_STYLES.send_money : TYPE_STYLES.receive;
+  return TYPE_STYLES[t.type] ?? TYPE_STYLES.send_money;
 }
 
 function txLabel(t, userId) {
-  if (t.transaction_type === "send") {
-    return t.sender_id === userId ? `Sent to ${t.recipient_phone ?? "recipient"}` : `Received from ${t.sender_phone ?? "sender"}`;
-  }
-  if (t.transaction_type === "cash_in")  return "Cash in via agent";
-  if (t.transaction_type === "cash_out") return "Cash out via agent";
-  if (t.transaction_type === "pay_merchant") return `Paid merchant`;
-  return t.transaction_type;
+  if (t.type === "send_money") return t.initiator_id === userId ? "Sent money" : "Received money";
+  if (t.type === "cash_in")  return "Cash in via agent";
+  if (t.type === "cash_out") return "Cash out via agent";
+  if (t.type === "pay_merchant") return "Paid merchant";
+  return t.type ?? "Transaction";
 }
 
 function isDebit(t, userId) {
-  if (t.transaction_type === "send") return t.sender_id === userId;
-  return t.transaction_type === "cash_out" || t.transaction_type === "pay_merchant";
+  if (t.type === "send_money") return t.initiator_id === userId;
+  return t.type === "cash_out" || t.type === "pay_merchant";
 }
 
 
@@ -76,8 +76,26 @@ export default function DashboardPage() {
 
   async function handleApprove(id) {
     setSessionActionLoading(id + "_a");
-    try { await approveSessionSimple(token, id); setPendingSessions((p) => p.filter((s) => s.session_id !== id)); }
-    catch { } finally { setSessionActionLoading(null); }
+    try {
+      let used_fingerprint = false;
+      try {
+        const creds = await listCredentials(token);
+        if (creds.length > 0) {
+          const options = await beginApproval(token, id);
+          if (options._dev_mode) {
+            await approveSession(token, id, "phone_webauthn", null);
+          } else {
+            const assertion = await navigator.credentials.get({ publicKey: prepareGetOptions(options) });
+            await approveSession(token, id, "phone_webauthn", assertionToJSON(assertion));
+          }
+          used_fingerprint = true;
+        }
+      } catch { /* no credentials or user cancelled — fall through */ }
+
+      if (!used_fingerprint) await approveSessionSimple(token, id);
+      setPendingSessions(p => p.filter(s => s.session_id !== id));
+    } catch { }
+    finally { setSessionActionLoading(null); }
   }
   async function handleDecline(id) {
     setSessionActionLoading(id + "_d");
