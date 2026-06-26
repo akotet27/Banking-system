@@ -55,6 +55,7 @@ export default function DashboardPage() {
   const [sessionActionLoading, setSessionActionLoading] = useState(null);
   const [loading, setLoading] = useState(true);
   const [balanceHidden, setBalanceHidden] = useState(false);
+  const [agentModal, setAgentModal] = useState(null); // "cash_in" | "cash_out" | null
 
   useEffect(() => {
     const kycFetch = fetch("http://localhost:8000/kyc/my-status", {
@@ -107,10 +108,10 @@ export default function DashboardPage() {
   const bal = wallet?.balance ?? 0;
 
   const QUICK = [
-    { label: "Send",     to: "/send",      Icon: SendIcon },
-    { label: "Cash in",  to: "/dashboard", Icon: InboxArrowDownIcon },
-    { label: "Cash out", to: "/dashboard", Icon: ArrowDownIcon },
-    { label: "Pay",      to: "/pay",       Icon: StoreIcon },
+    { label: "Send",     to: "/send", Icon: SendIcon },
+    { label: "Cash in",  onClick: () => setAgentModal("cash_in"),  Icon: InboxArrowDownIcon },
+    { label: "Cash out", onClick: () => setAgentModal("cash_out"), Icon: ArrowDownIcon },
+    { label: "Pay",      to: "/pay", Icon: StoreIcon },
   ];
 
   return (
@@ -162,15 +163,20 @@ export default function DashboardPage() {
 
         {/* Quick actions row */}
         <div className="grid grid-cols-4 gap-3">
-          {QUICK.map(({ label, to, Icon }) => (
-            <Link key={label} to={to}
-              className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-4 flex flex-col items-center gap-2 hover:border-orange-200 dark:hover:border-orange-700 hover:shadow-sm transition-all">
-              <div className="w-10 h-10 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center">
-                <Icon className="w-5 h-5 text-orange-500" />
-              </div>
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</span>
-            </Link>
-          ))}
+          {QUICK.map(({ label, to, onClick, Icon }) => {
+            const cls = "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-4 flex flex-col items-center gap-2 hover:border-orange-200 dark:hover:border-orange-700 hover:shadow-sm transition-all w-full";
+            const inner = (
+              <>
+                <div className="w-10 h-10 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center">
+                  <Icon className="w-5 h-5 text-orange-500" />
+                </div>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</span>
+              </>
+            );
+            return to
+              ? <Link key={label} to={to} className={cls}>{inner}</Link>
+              : <button key={label} type="button" onClick={onClick} className={cls}>{inner}</button>;
+          })}
         </div>
 
         {/* Pending cash-out approvals */}
@@ -261,6 +267,58 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Cash in / Cash out info modal */}
+      {agentModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm px-4 pb-6 sm:pb-0"
+          onClick={() => setAgentModal(null)}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-6"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                agentModal === "cash_in"
+                  ? "bg-blue-100 dark:bg-blue-900/30"
+                  : "bg-red-100 dark:bg-red-900/30"
+              }`}>
+                {agentModal === "cash_in"
+                  ? <InboxArrowDownIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  : <ArrowDownIcon className="w-5 h-5 text-red-500 dark:text-red-400" />}
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white">
+                  {agentModal === "cash_in" ? "How to Cash In" : "How to Cash Out"}
+                </h3>
+                <p className="text-xs text-slate-400">Requires visiting an agent</p>
+              </div>
+            </div>
+
+            {agentModal === "cash_in" ? (
+              <ol className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
+                <li className="flex gap-2"><span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">1.</span> Visit any Ishimwe Bank agent with your cash.</li>
+                <li className="flex gap-2"><span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">2.</span> Give the agent your phone number: <span className="font-mono font-bold text-slate-900 dark:text-white">{user?.phone_number}</span></li>
+                <li className="flex gap-2"><span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">3.</span> The agent enters the amount and confirms on their device.</li>
+                <li className="flex gap-2"><span className="font-bold text-blue-600 dark:text-blue-400 shrink-0">4.</span> The funds appear in your wallet instantly.</li>
+              </ol>
+            ) : (
+              <ol className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
+                <li className="flex gap-2"><span className="font-bold text-red-500 shrink-0">1.</span> Visit any Ishimwe Bank agent and say how much you want to withdraw.</li>
+                <li className="flex gap-2"><span className="font-bold text-red-500 shrink-0">2.</span> Give the agent your phone number: <span className="font-mono font-bold text-slate-900 dark:text-white">{user?.phone_number}</span></li>
+                <li className="flex gap-2"><span className="font-bold text-red-500 shrink-0">3.</span> A request will appear on <span className="font-semibold text-slate-900 dark:text-white">this page</span> — approve it.</li>
+                <li className="flex gap-2"><span className="font-bold text-red-500 shrink-0">4.</span> The agent hands you the cash.</li>
+              </ol>
+            )}
+
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl px-3 py-2">
+              For your security, all cash transactions require an authorised agent.
+            </p>
+
+            <button onClick={() => setAgentModal(null)}
+              className="mt-4 w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-3 rounded-xl hover:opacity-90 transition-opacity">
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </SidebarLayout>
   );
 }

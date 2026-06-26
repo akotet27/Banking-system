@@ -38,9 +38,8 @@ const STEPS = [
 ];
 
 const ROLES = [
-  { value: "customer", label: "Customer",   desc: "Send money, pay merchants, cash out" },
-  { value: "agent",    label: "Agent",      desc: "Process cash in and cash out for customers" },
-  { value: "merchant", label: "Merchant",   desc: "Accept payments from customers" },
+  { value: "customer", label: "Customer", desc: "Send money, pay merchants, cash out" },
+  { value: "agent",    label: "Agent",    desc: "Process cash in and cash out for customers" },
 ];
 
 const RW_DISTRICTS = [
@@ -165,13 +164,14 @@ export default function RegisterPage() {
   /* ── Step 3: fingerprint (web stub) ── */
   if (step === 3) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="w-full max-w-sm bg-white rounded-3xl shadow-sm border border-slate-100 p-8 text-center">
+      <div className="relative min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6">
+        <ThemeToggle />
+        <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 p-8 text-center">
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircleIcon className="w-8 h-8 text-emerald-600" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Account created!</h2>
-          <p className="text-slate-500 text-sm mb-6">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Account created!</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
             Your email is verified. Fingerprint setup requires the Ishimwe Bank mobile app — for now, all features are available via password.
           </p>
           <button
@@ -188,14 +188,22 @@ export default function RegisterPage() {
   /* ── Step 2: OTP verification ── */
   if (step === 2) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="w-full max-w-sm bg-white rounded-3xl shadow-sm border border-slate-100 p-8 text-center">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="relative min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6">
+        <ThemeToggle />
+        <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 p-8 text-center">
+          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
             <EnvelopeIcon className="w-7 h-7 text-blue-600" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-1">Check your email</h2>
-          <p className="text-slate-500 text-sm mb-1">We sent a 6-digit verification code to</p>
-          <p className="font-bold text-slate-900 text-sm mb-6">{email}</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">Check your email</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-1">We sent a 6-digit verification code to</p>
+          <p className="font-bold text-slate-900 dark:text-white text-sm mb-1">{email}</p>
+          <button
+            type="button"
+            onClick={() => { setStep(1); setOtp(["","","","","",""]); setError(null); }}
+            className="text-xs text-orange-500 hover:underline mb-5 inline-block"
+          >
+            Wrong email? Go back and fix it
+          </button>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-3 py-2.5 mb-4 text-left">{error}</div>
@@ -211,8 +219,8 @@ export default function RegisterPage() {
                   value={digit}
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKey(i, e)}
-                  className={`w-12 h-14 text-center text-xl font-bold border-2 rounded-xl outline-none transition-colors ${
-                    digit ? "border-orange-400 text-slate-900" : "border-slate-200 text-slate-400"
+                  className={`w-12 h-14 text-center text-xl font-bold border-2 rounded-xl outline-none transition-colors bg-white dark:bg-slate-700 ${
+                    digit ? "border-orange-400 text-slate-900 dark:text-white" : "border-slate-200 dark:border-slate-600 text-slate-400"
                   } focus:border-orange-500`}
                 />
               ))}
@@ -226,7 +234,7 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          <p className="text-slate-500 text-sm mt-5">
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-5">
             Didn&apos;t get a code?{" "}
             <button
               onClick={async () => {
@@ -248,6 +256,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left dark panel */}
+
       <div className="hidden lg:flex lg:w-[46%] bg-[#0B1D3E] flex-col">
         <div className="px-10 py-8">
           <div className="flex items-center gap-2.5">
@@ -279,22 +288,24 @@ export default function RegisterPage() {
       </div>
 
       {/* Right form panel */}
-      <div className="flex-1 overflow-y-auto bg-white relative">
+      <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-900 relative">
         {/* Back to landing */}
-        <Link to="/" className="absolute top-5 left-5 flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-700 transition-colors group z-10">
+        <Link to="/" className="absolute top-5 left-5 flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors group z-10">
+
           <svg className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
           Back
         </Link>
+        <ThemeToggle />
         <div className="min-h-full flex items-start justify-center p-8 pt-10">
           <div className="w-full max-w-md">
-            <div className="inline-flex items-center px-3 py-1 bg-slate-100 rounded-full text-xs text-slate-500 font-semibold mb-5 tracking-wide">
+            <div className="inline-flex items-center px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs text-slate-500 dark:text-slate-400 font-semibold mb-5 tracking-wide">
               Step 1 of 3
             </div>
-            <h2 className="text-2xl font-extrabold text-slate-900 mb-1">Create your account</h2>
-            <p className="text-slate-500 text-sm mb-6">It only takes a couple of minutes to get started.</p>
+            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-1">Create your account</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">It only takes a couple of minutes to get started.</p>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-3 py-2.5 mb-4">{error}</div>
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm rounded-xl px-3 py-2.5 mb-4">{error}</div>
             )}
 
             <form onSubmit={handleStep1} className="space-y-4">
@@ -304,14 +315,14 @@ export default function RegisterPage() {
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">First Name</label>
                   <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)}
                     placeholder="Mugisha"
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                    className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-400" />
                   <FErr k="firstName" />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Last Name</label>
                   <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
                     placeholder="Jean Pierre"
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                    className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-400" />
                   <FErr k="lastName" />
                 </div>
               </div>
@@ -319,14 +330,14 @@ export default function RegisterPage() {
               {/* Phone */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Phone Number</label>
-                <div className="flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 transition-all">
-                  <div className="flex items-center gap-1.5 px-3 bg-slate-50 border-r border-slate-300 shrink-0">
+                <div className="flex rounded-xl border border-slate-300 dark:border-slate-700 overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 transition-all">
+                  <div className="flex items-center gap-1.5 px-3 bg-slate-50 dark:bg-slate-700 border-r border-slate-300 dark:border-slate-600 shrink-0">
                     <RwandaFlagIcon className="w-5 h-3.5" />
-                    <span className="text-sm font-bold text-slate-600">+250</span>
+                    <span className="text-sm font-bold text-slate-600 dark:text-slate-300">+250</span>
                   </div>
                   <input type="tel" value={phoneLocal} onChange={(e) => setPhoneLocal(e.target.value)}
                     placeholder="788 123 456"
-                    className="flex-1 px-3 py-2.5 text-sm outline-none bg-white" />
+                    className="flex-1 px-3 py-2.5 text-sm outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500" />
                 </div>
                 <FErr k="phone" />
               </div>
@@ -336,7 +347,7 @@ export default function RegisterPage() {
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Email Address</label>
                 <input type="text" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                  className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-400" />
                 <FErr k="email" />
               </div>
 
@@ -346,7 +357,7 @@ export default function RegisterPage() {
                 <div className="relative">
                   <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••"
-                    className="w-full border border-slate-300 rounded-xl px-3 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                    className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 pr-10 py-2.5 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-400" />
                   <button type="button" onClick={() => setShowPassword(v => !v)} tabIndex={-1}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                     {showPassword ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
@@ -356,10 +367,10 @@ export default function RegisterPage() {
                   <div className="mt-2">
                     <div className="flex gap-1 mb-1">
                       {[1,2,3,4].map((i) => (
-                        <div key={i} className={`h-1 flex-1 rounded-full ${i <= strengthScore ? strengthColor : "bg-slate-200"}`} />
+                        <div key={i} className={`h-1 flex-1 rounded-full ${i <= strengthScore ? strengthColor : "bg-slate-200 dark:bg-slate-700"}`} />
                       ))}
                     </div>
-                    <p className="text-xs text-slate-500">{strengthLabel} — includes letters, numbers, and symbols</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{strengthLabel} — includes letters, numbers, and symbols</p>
                   </div>
                 )}
                 <FErr k="password" />
@@ -371,13 +382,13 @@ export default function RegisterPage() {
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Date of Birth</label>
                   <input type="date" value={dob} onChange={(e) => setDob(e.target.value)}
                     max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                    className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-400" />
                   <FErr k="dob" />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">District</label>
                   <select value={location} onChange={(e) => setLocation(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
+                    className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-400">
                     <option value="">Select…</option>
                     {RW_DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
@@ -390,11 +401,11 @@ export default function RegisterPage() {
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Account Type</label>
                 <div className="grid grid-cols-3 gap-2">
                   {ROLES.map((r) => (
-                    <label key={r.value} className={`flex flex-col p-3 rounded-xl border cursor-pointer transition-all ${role === r.value ? "border-orange-400 bg-orange-50" : "border-slate-200 hover:border-slate-300"}`}>
+                    <label key={r.value} className={`flex flex-col p-3 rounded-xl border cursor-pointer transition-all ${role === r.value ? "border-orange-400 bg-orange-50 dark:bg-orange-900/20" : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"}`}>
                       <input type="radio" name="role" value={r.value} checked={role === r.value}
                         onChange={() => setRole(r.value)} className="sr-only" />
-                      <span className="font-semibold text-sm text-slate-900">{r.label}</span>
-                      <span className="text-[11px] text-slate-400 mt-0.5 leading-tight">{r.desc}</span>
+                      <span className="font-semibold text-sm text-slate-900 dark:text-white">{r.label}</span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 leading-tight">{r.desc}</span>
                     </label>
                   ))}
                 </div>
@@ -404,7 +415,7 @@ export default function RegisterPage() {
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
                   className="mt-0.5 w-4 h-4 rounded accent-orange-500 shrink-0" />
-                <span className="text-sm text-slate-600">
+                <span className="text-sm text-slate-600 dark:text-slate-400">
                   I agree to Ishimwe Bank&apos;s{" "}
                   <span className="text-orange-500 font-semibold">Terms of Service</span> and{" "}
                   <span className="text-orange-500 font-semibold">Privacy Policy</span>, including how fingerprint sessions protect my account.
@@ -418,7 +429,7 @@ export default function RegisterPage() {
               </button>
             </form>
 
-            <p className="text-center text-sm text-slate-500 mt-5">
+            <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-5">
               Already have an account?{" "}
               <Link to="/login" className="text-orange-500 font-bold hover:underline">Sign in</Link>
             </p>

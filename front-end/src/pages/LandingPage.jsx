@@ -199,8 +199,6 @@ export default function LandingPage() {
           <span style={{ ...display, fontWeight: 700, fontSize: 17, letterSpacing: -.4 }}>Ishimwe Bank</span>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Link to="/login" style={{ ...body, fontSize: 14, color: c.blue, textDecoration: "none", fontWeight: 600, padding: "8px 14px" }}>Sign in</Link>
-          <Link to="/register" style={{ ...body, fontSize: 14, fontWeight: 700, color: "#fff", textDecoration: "none", padding: "9px 20px", borderRadius: 10, background: "#ff7a1a", boxShadow: "0 2px 12px rgba(255,122,26,.3)" }}>Get Started</Link>
           {/* Theme toggle */}
           <button
             onClick={toggleDark}

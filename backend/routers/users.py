@@ -55,7 +55,7 @@ def get_my_transactions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return (
+    txns = (
         db.query(Transaction)
         .filter(
             (Transaction.initiator_id == current_user.id)
@@ -66,3 +66,25 @@ def get_my_transactions(
         .limit(limit)
         .all()
     )
+    result = []
+    for t in txns:
+        counterparty = (
+            db.query(User).filter(User.id == t.counterparty_id).first()
+            if t.counterparty_id else None
+        )
+        out = TransactionOut(
+            id=t.id,
+            type=t.type,
+            initiator_id=t.initiator_id,
+            counterparty_id=t.counterparty_id,
+            counterparty_name=counterparty.full_name if counterparty else None,
+            counterparty_phone=counterparty.phone_number if counterparty else None,
+            amount=t.amount,
+            fee=t.fee,
+            fee_paid_by=t.fee_paid_by,
+            net_amount=t.net_amount,
+            status=t.status,
+            created_at=t.created_at,
+        )
+        result.append(out)
+    return result

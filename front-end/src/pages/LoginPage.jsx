@@ -234,7 +234,7 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-2 mb-8">
             <LogoMark size={28} />
-            <span className="text-slate-900 font-bold text-lg">Ishimwe Bank</span>
+            <span className="text-slate-900 dark:text-white font-bold text-lg">Ishimwe Bank</span>
           </div>
 
           <div className="inline-flex items-center px-3 py-1 bg-slate-100 rounded-full text-xs text-slate-500 font-semibold mb-6 tracking-wide">

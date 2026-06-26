@@ -18,23 +18,25 @@ const TYPE_META = {
 };
 
 function getTxType(t, userId) {
-  if (t.transaction_type === "send") return t.sender_id === userId ? "send" : "receive";
-  return t.transaction_type;
+  const raw = t.type === "send_money" ? "send" : t.type;
+  if (raw === "send") return t.initiator_id === userId ? "send" : "receive";
+  return raw;
 }
 
 function getTxLabel(t, userId) {
   const type = getTxType(t, userId);
-  if (type === "send")         return `Sent to ${t.recipient_phone ?? "recipient"}`;
-  if (type === "receive")      return `Received from ${t.sender_phone ?? "sender"}`;
+  const name = t.counterparty_name ?? t.counterparty_phone;
+  if (type === "send")         return `Sent to ${name ?? "recipient"}`;
+  if (type === "receive")      return `Received from ${name ?? "sender"}`;
   if (type === "cash_in")      return "Cash in via agent";
   if (type === "cash_out")     return "Cash out via agent";
-  if (type === "pay_merchant") return "Paid merchant";
-  return t.transaction_type;
+  if (type === "pay_merchant") return `Paid ${name ?? "merchant"}`;
+  return t.type;
 }
 
 function isDebit(t, userId) {
   const type = getTxType(t, userId);
-  return type === "send" || type === "cash_out" || type === "pay_merchant";
+  return (type === "send" || type === "cash_out" || type === "pay_merchant") && t.initiator_id === userId;
 }
 
 function groupByDate(txns) {

@@ -33,7 +33,7 @@ class KycRequestWithUser(BaseModel):
 @router.post("/submit", response_model=KycRequestOut)
 def submit_kyc(
     payload: KycSubmitRequest,
-    current_user: User = Depends(require_role("customer")),
+    current_user: User = Depends(require_role("customer", "merchant")),
     db: Session = Depends(get_db),
 ):
     existing = (

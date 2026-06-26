@@ -88,6 +88,6 @@ def send_otp_email(email: str, code: str, purpose: str) -> None:
             server.ehlo()
             server.login(settings.smtp_user, settings.smtp_password)
             server.send_message(msg)
-        print(f"[OTP] Email delivered to {email} ✓", flush=True)
+        print(f"[OTP] Email delivered to {email} OK", flush=True)
     except Exception as exc:
-        print(f"[OTP] SMTP failed ({type(exc).__name__}: {exc}) — use the code above from console", flush=True)
+        print(f"[OTP] SMTP failed ({type(exc).__name__}: {exc}) - use the code above from console", flush=True)

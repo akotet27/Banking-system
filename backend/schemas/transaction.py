@@ -9,6 +9,8 @@ class TransactionOut(BaseModel):
     type: str
     initiator_id: int
     counterparty_id: Optional[int]
+    counterparty_name: Optional[str] = None
+    counterparty_phone: Optional[str] = None
     amount: Decimal
     fee: Decimal
     fee_paid_by: Optional[str]

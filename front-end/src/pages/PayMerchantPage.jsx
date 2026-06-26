@@ -3,13 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { payMerchant } from "../api/transactionApi";
+import { login } from "../api/authApi";
 import { formatCurrency } from "../utils/validation";
-import { CheckCircleIcon, QrCodeIcon, StoreIcon, RwandaFlagIcon } from "../components/Icons";
+import { CheckCircleIcon, QrCodeIcon, StoreIcon, RwandaFlagIcon, EyeIcon, EyeOffIcon, LockIcon } from "../components/Icons";
 
 const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
 
 export default function PayMerchantPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const [merchantPhone, setMerchantPhone] = useState("");
   const [foundMerchant, setFoundMerchant] = useState(null);
@@ -18,6 +19,13 @@ export default function PayMerchantPage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Confirmation step
+  const [confirming, setConfirming] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [confirmError, setConfirmError] = useState(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const parsedAmt = parseFloat(amount) || 0;
   const fullPhone = merchantPhone.startsWith("+") ? merchantPhone : "+250" + merchantPhone.replace(/\D/g, "");
@@ -45,18 +53,37 @@ export default function PayMerchantPage() {
     }
   }
 
-  async function handlePay() {
+  function handlePay() {
     if (!foundMerchant || foundMerchant.notFound) { setError("Look up a merchant first."); return; }
     if (parsedAmt < 1) { setError("Enter an amount."); return; }
     setError(null);
-    setLoading(true);
+    setConfirmPassword("");
+    setConfirmError(null);
+    setConfirming(true);
+  }
+
+  async function handleConfirm(e) {
+    e.preventDefault();
+    if (!confirmPassword) { setConfirmError("Enter your password to confirm."); return; }
+    setConfirmError(null);
+    setConfirmLoading(true);
+    try {
+      // Verify password by calling login
+      await login(user.phone_number, confirmPassword);
+    } catch {
+      setConfirmError("Incorrect password. Please try again.");
+      setConfirmLoading(false);
+      return;
+    }
+    // Password correct — execute payment
     try {
       const txn = await payMerchant(token, { merchant_phone: fullPhone, amount: parsedAmt });
+      setConfirming(false);
       setSuccess({ ...txn, merchantName: foundMerchant.full_name });
     } catch (err) {
-      setError(err?.detail ?? "Payment failed.");
+      setConfirmError(err?.detail ?? "Payment failed.");
     } finally {
-      setLoading(false);
+      setConfirmLoading(false);
     }
   }
 
@@ -203,6 +230,90 @@ export default function PayMerchantPage() {
           </div>
         )}
       </div>
+
+      {/* ── Confirmation overlay ── */}
+      {confirming && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 p-6">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 bg-orange-100 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center shrink-0">
+                <LockIcon className="w-5 h-5 text-orange-500" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Confirm payment</h3>
+                <p className="text-xs text-slate-400">Enter your password to authorise</p>
+              </div>
+            </div>
+
+            {/* Payment summary */}
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-2xl p-4 mb-5 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500 dark:text-slate-400">To</span>
+                <span className="font-semibold text-slate-900 dark:text-white">{foundMerchant.full_name ?? fullPhone}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500 dark:text-slate-400">Amount</span>
+                <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(parsedAmt)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500 dark:text-slate-400">Fee</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Free</span>
+              </div>
+              <div className="border-t border-slate-200 dark:border-slate-600 pt-2 flex justify-between text-sm font-bold">
+                <span className="text-slate-700 dark:text-slate-300">Total deducted</span>
+                <span className="text-slate-900 dark:text-white">{formatCurrency(parsedAmt)}</span>
+              </div>
+            </div>
+
+            {confirmError && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded-xl px-3 py-2.5 mb-4">
+                {confirmError}
+              </div>
+            )}
+
+            <form onSubmit={handleConfirm} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                  Your password
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <LockIcon className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <input
+                    autoFocus
+                    type={showConfirmPw ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-xl pl-9 pr-10 py-3 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  />
+                  <button type="button" tabIndex={-1}
+                    onClick={() => setShowConfirmPw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    {showConfirmPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit" disabled={confirmLoading}
+                className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl hover:bg-orange-600 disabled:opacity-50 transition-colors"
+              >
+                {confirmLoading ? "Verifying…" : `Confirm & pay ${formatCurrency(parsedAmt)}`}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setConfirming(false); setConfirmError(null); }}
+                className="w-full text-sm text-slate-500 dark:text-slate-400 py-2 hover:text-slate-700 dark:hover:text-slate-200"
+              >
+                Cancel
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </SidebarLayout>
   );
 }

@@ -13,6 +13,20 @@ class UserCreate(BaseModel):
     date_of_birth: str  # YYYY-MM-DD
     location: str       # e.g. "Kigali, Gasabo"
 
+    @field_validator("email")
+    @classmethod
+    def validate_email_deliverable(cls, v: str) -> str:
+        try:
+            from email_validator import validate_email as _ve, EmailNotValidError
+            _ve(v, check_deliverability=True)
+        except Exception as exc:
+            # Only reject if it's a deliverability error, not a DNS timeout
+            name = type(exc).__name__
+            if "EmailNotValidError" in name or "EmailUndeliverableError" in name:
+                raise ValueError(str(exc))
+            # DNS timeout or network error — allow through and rely on OTP verification
+        return v
+
     @field_validator("phone_number")
     @classmethod
     def validate_phone(cls, v: str) -> str:
@@ -23,8 +37,8 @@ class UserCreate(BaseModel):
     @field_validator("role")
     @classmethod
     def validate_role(cls, v: str) -> str:
-        if v not in ("customer", "agent", "merchant"):
-            raise ValueError("Role must be customer, agent, or merchant")
+        if v not in ("customer", "agent"):
+            raise ValueError("Role must be customer or agent — merchant status is granted by an admin")
         return v
 
     @field_validator("full_name")
