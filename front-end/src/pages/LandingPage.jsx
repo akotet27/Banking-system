@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { LogoMark } from "../components/Logo";
+import { useTheme } from "../contexts/ThemeContext";
 
 function useCount(to, duration = 2000) {
   const [val, setVal] = useState(0);
@@ -20,10 +21,10 @@ function useCount(to, duration = 2000) {
 }
 
 const TXNS = [
-  { label: "Received from J. Mugisha", amount: "+50,000", pos: true,  time: "2 min ago" },
-  { label: "Nakumatt Kigali",          amount: "−12,400", pos: false, time: "1 hr ago" },
-  { label: "Agent Cash In",            amount: "+100,000",pos: true,  time: "Yesterday" },
-  { label: "Send to A. Uwase",         amount: "−8,500",  pos: false, time: "2 days ago" },
+  { label: "Received from J. Mugisha", amount: "+50,000",  pos: true,  time: "2 min ago" },
+  { label: "Nakumatt Kigali",          amount: "−12,400",  pos: false, time: "1 hr ago" },
+  { label: "Agent Cash In",            amount: "+100,000", pos: true,  time: "Yesterday" },
+  { label: "Send to A. Uwase",         amount: "−8,500",   pos: false, time: "2 days ago" },
 ];
 
 const QUICK = [
@@ -111,45 +112,126 @@ const ShieldIcon = () => (
 );
 
 const FEATURES = [
-  { icon: "⬆", color: "#0fb37d", title: "Cash In - Free", desc: "Deposit cash through any agent. No fees, no waiting." },
-  { icon: "↗", color: "#1a73c4", title: "Send Money",     desc: "Transfer to any phone number in seconds. Instant settlement." },
+  { icon: "⬆", color: "#0fb37d", title: "Cash In - Free",          desc: "Deposit cash through any agent. No fees, no waiting." },
+  { icon: "↗", color: "#1a73c4", title: "Send Money",              desc: "Transfer to any phone number in seconds. Instant settlement." },
   { icon: <ShieldIcon />, color: "#ff7a1a", title: "Privacy-first Cash Out", desc: "Agents never see your balance - only a yes or no on your phone." },
 ];
 
+function SunIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5"/>
+      <line x1="12" y1="1"  x2="12" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="23"/>
+      <line x1="4.22" y1="4.22"  x2="5.64" y2="5.64"/>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+      <line x1="1"  y1="12" x2="3"  y2="12"/>
+      <line x1="21" y1="12" x2="23" y2="12"/>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  );
+}
+
 export default function LandingPage() {
+  const { dark, toggleDark } = useTheme();
+
+  const c = dark ? {
+    pageBg:         "#080f1e",
+    navBg:          "rgba(8,15,30,.92)",
+    navBorder:      "rgba(255,255,255,.07)",
+    text:           "#e8f2ff",
+    textSub:        "#7a9dc0",
+    textMuted:      "#4a6a8a",
+    blue:           "#4d9de0",
+    blueText:       "#7ab8f0",
+    badgeBg:        "#0d1f3a",
+    badgeBorder:    "#1e3a5c",
+    cardBg:         "#0d1a2d",
+    cardBorder:     "#1e3050",
+    secBtnBg:       "#0d1a2d",
+    secBtnBorder:   "#1e3050",
+    secBtnText:     "#e8f2ff",
+    footerBorder:   "#1a2e4a",
+    toggleBg:       "rgba(255,255,255,.08)",
+    toggleBorder:   "rgba(255,255,255,.12)",
+    toggleColor:    "#e8f2ff",
+  } : {
+    pageBg:         "#f4f8fc",
+    navBg:          "rgba(244,248,252,.88)",
+    navBorder:      "rgba(10,31,68,.07)",
+    text:           "#0a1f44",
+    textSub:        "#3a5880",
+    textMuted:      "#7a9ab8",
+    blue:           "#1a73c4",
+    blueText:       "#1a56a8",
+    badgeBg:        "#deeeff",
+    badgeBorder:    "#b8d5f6",
+    cardBg:         "#fff",
+    cardBorder:     "#e0eaf6",
+    secBtnBg:       "#fff",
+    secBtnBorder:   "#ccdaee",
+    secBtnText:     "#0a1f44",
+    footerBorder:   "#e0eaf6",
+    toggleBg:       "rgba(10,31,68,.06)",
+    toggleBorder:   "rgba(10,31,68,.12)",
+    toggleColor:    "#0a1f44",
+  };
+
   const display = { fontFamily: "'Space Grotesk', sans-serif" };
   const body    = { fontFamily: "'Inter', sans-serif" };
 
   return (
-    <div style={{ ...body, background: "#f4f8fc", color: "#0a1f44", overflowX: "hidden" }}>
+    <div style={{ ...body, background: c.pageBg, color: c.text, overflowX: "hidden", transition: "background .25s, color .25s" }}>
 
       {/* NAV */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 200, background: "rgba(244,248,252,.88)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(10,31,68,.07)", padding: "0 6%", height: 62, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <nav style={{ position: "sticky", top: 0, zIndex: 200, background: c.navBg, backdropFilter: "blur(14px)", borderBottom: `1px solid ${c.navBorder}`, padding: "0 6%", height: 62, display: "flex", alignItems: "center", justifyContent: "space-between", transition: "background .25s, border-color .25s" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <LogoMark size={34} variant="light" />
           <span style={{ ...display, fontWeight: 700, fontSize: 17, letterSpacing: -.4 }}>Ishimwe Bank</span>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <Link to="/login" style={{ ...body, fontSize: 14, color: "#1a73c4", textDecoration: "none", fontWeight: 600, padding: "8px 14px" }}>Sign in</Link>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Link to="/login" style={{ ...body, fontSize: 14, color: c.blue, textDecoration: "none", fontWeight: 600, padding: "8px 14px" }}>Sign in</Link>
           <Link to="/register" style={{ ...body, fontSize: 14, fontWeight: 700, color: "#fff", textDecoration: "none", padding: "9px 20px", borderRadius: 10, background: "#ff7a1a", boxShadow: "0 2px 12px rgba(255,122,26,.3)" }}>Get Started</Link>
+          {/* Theme toggle */}
+          <button
+            onClick={toggleDark}
+            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              width: 36, height: 36, borderRadius: 10, border: `1px solid ${c.toggleBorder}`,
+              background: c.toggleBg, color: c.toggleColor, cursor: "pointer",
+              transition: "background .25s, border-color .25s, color .25s",
+            }}
+          >
+            {dark ? <SunIcon /> : <MoonIcon />}
+          </button>
         </div>
       </nav>
 
       {/* HERO */}
       <section style={{ maxWidth: 1120, margin: "0 auto", padding: "76px 6% 80px", display: "flex", alignItems: "center", gap: 56, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 400px", maxWidth: 510 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#deeeff", border: "1px solid #b8d5f6", borderRadius: 100, padding: "5px 14px", marginBottom: 28 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: c.badgeBg, border: `1px solid ${c.badgeBorder}`, borderRadius: 100, padding: "5px 14px", marginBottom: 28, transition: "background .25s, border-color .25s" }}>
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#0fb37d", display: "inline-block" }} />
-            <span style={{ ...body, fontSize: 12, fontWeight: 600, color: "#1a56a8", letterSpacing: .3 }}>Rwanda's Mobile Money Platform</span>
+            <span style={{ ...body, fontSize: 12, fontWeight: 600, color: c.blueText, letterSpacing: .3 }}>Rwanda's Mobile Money Platform</span>
           </div>
 
           <h1 style={{ ...display, fontSize: "clamp(38px, 5vw, 56px)", fontWeight: 800, lineHeight: 1.06, letterSpacing: -1.6, margin: "0 0 22px" }}>
             Banking built<br />
-            <span style={{ color: "#1a73c4" }}>for</span>{" "}
+            <span style={{ color: c.blue }}>for</span>{" "}
             <span style={{ color: "#ff7a1a" }}>Rwanda.</span>
           </h1>
 
-          <p style={{ fontSize: 17, color: "#3a5880", lineHeight: 1.68, margin: "0 0 34px", maxWidth: 450 }}>
+          <p style={{ fontSize: 17, color: c.textSub, lineHeight: 1.68, margin: "0 0 34px", maxWidth: 450, transition: "color .25s" }}>
             Send money, pay merchants, and cash in or out through a trusted agent network — with sessions that keep your balance invisible to agents at all times.
           </p>
 
@@ -157,14 +239,14 @@ export default function LandingPage() {
             <Link to="/register" style={{ ...body, textDecoration: "none", fontWeight: 700, fontSize: 15, color: "#fff", padding: "14px 30px", borderRadius: 13, background: "#ff7a1a", boxShadow: "0 6px 24px rgba(255,122,26,.38)" }}>
               Open an Account →
             </Link>
-            <Link to="/login" style={{ ...body, textDecoration: "none", fontWeight: 600, fontSize: 15, color: "#0a1f44", padding: "14px 28px", borderRadius: 13, background: "#fff", border: "1.5px solid #ccdaee" }}>
+            <Link to="/login" style={{ ...body, textDecoration: "none", fontWeight: 600, fontSize: 15, color: c.secBtnText, padding: "14px 28px", borderRadius: 13, background: c.secBtnBg, border: `1.5px solid ${c.secBtnBorder}`, transition: "background .25s, color .25s, border-color .25s" }}>
               Sign In
             </Link>
           </div>
 
           <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
             {["Zero deposit fees", "Privacy-first sessions", "Instant transfers"].map(t => (
-              <span key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#3a5880" }}>
+              <span key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: c.textSub, transition: "color .25s" }}>
                 <span style={{ color: "#0fb37d", fontWeight: 700 }}>✓</span> {t}
               </span>
             ))}
@@ -185,12 +267,12 @@ export default function LandingPage() {
       <section style={{ padding: "60px 6% 80px", maxWidth: 1120, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
           {FEATURES.map(f => (
-            <div key={f.title} style={{ background: "#fff", borderRadius: 20, padding: "28px 26px", border: "1.5px solid #e0eaf6", boxShadow: "0 2px 16px rgba(10,31,68,.05)" }}>
+            <div key={f.title} style={{ background: c.cardBg, borderRadius: 20, padding: "28px 26px", border: `1.5px solid ${c.cardBorder}`, boxShadow: dark ? "0 2px 16px rgba(0,0,0,.2)" : "0 2px 16px rgba(10,31,68,.05)", transition: "background .25s, border-color .25s" }}>
               <div style={{ width: 46, height: 46, borderRadius: 14, background: f.color + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>
                 {f.icon}
               </div>
-              <h3 style={{ ...display, fontSize: 18, fontWeight: 700, margin: "0 0 8px", color: "#0a1f44" }}>{f.title}</h3>
-              <p style={{ fontSize: 14, color: "#3a5880", lineHeight: 1.6, margin: 0 }}>{f.desc}</p>
+              <h3 style={{ ...display, fontSize: 18, fontWeight: 700, margin: "0 0 8px", color: c.text, transition: "color .25s" }}>{f.title}</h3>
+              <p style={{ fontSize: 14, color: c.textSub, lineHeight: 1.6, margin: 0, transition: "color .25s" }}>{f.desc}</p>
             </div>
           ))}
         </div>
@@ -198,29 +280,29 @@ export default function LandingPage() {
 
       {/* CTA */}
       <section style={{ padding: "60px 6% 80px", textAlign: "center" }}>
-        <h2 style={{ ...display, fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 800, letterSpacing: -1, margin: "0 0 14px" }}>
+        <h2 style={{ ...display, fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 800, letterSpacing: -1, margin: "0 0 14px", color: c.text, transition: "color .25s" }}>
           Ready to get started?
         </h2>
-        <p style={{ fontSize: 16, color: "#3a5880", margin: "0 auto 32px", maxWidth: 380 }}>
+        <p style={{ fontSize: 16, color: c.textSub, margin: "0 auto 32px", maxWidth: 380, transition: "color .25s" }}>
           Open your Ishimwe Bank account in under 2 minutes. No branch visit required.
         </p>
         <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
           <Link to="/register" style={{ ...body, textDecoration: "none", fontWeight: 700, fontSize: 16, color: "#fff", padding: "15px 36px", borderRadius: 13, background: "#ff7a1a", boxShadow: "0 6px 28px rgba(255,122,26,.38)" }}>
             Open an Account →
           </Link>
-          <Link to="/login" style={{ ...body, textDecoration: "none", fontWeight: 600, fontSize: 16, color: "#0a1f44", padding: "15px 34px", borderRadius: 13, background: "#fff", border: "1.5px solid #ccdaee" }}>
+          <Link to="/login" style={{ ...body, textDecoration: "none", fontWeight: 600, fontSize: 16, color: c.secBtnText, padding: "15px 34px", borderRadius: 13, background: c.secBtnBg, border: `1.5px solid ${c.secBtnBorder}`, transition: "background .25s, color .25s, border-color .25s" }}>
             Already have an account
           </Link>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer style={{ borderTop: "1px solid #e0eaf6", padding: "22px 6%", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+      <footer style={{ borderTop: `1px solid ${c.footerBorder}`, padding: "22px 6%", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, transition: "border-color .25s" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <LogoMark size={24} variant="light" />
-          <span style={{ ...display, fontWeight: 700, fontSize: 14, color: "#0a1f44" }}>Ishimwe Bank</span>
+          <span style={{ ...display, fontWeight: 700, fontSize: 14, color: c.text, transition: "color .25s" }}>Ishimwe Bank</span>
         </div>
-        <p style={{ fontSize: 13, color: "#7a9ab8", margin: 0 }}>Kigali, Rwanda 🇷🇼</p>
+        <p style={{ fontSize: 13, color: c.textMuted, margin: 0 }}>Kigali, Rwanda 🇷🇼</p>
       </footer>
 
     </div>
