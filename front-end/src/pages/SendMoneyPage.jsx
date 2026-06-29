@@ -3,8 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { sendMoney } from "../api/transactionApi";
+import { login } from "../api/authApi";
 import { formatCurrency, validatePhone } from "../utils/validation";
-import { CheckCircleIcon, RwandaFlagIcon } from "../components/Icons";
+import { CheckCircleIcon, RwandaFlagIcon, LockIcon, EyeIcon, EyeOffIcon } from "../components/Icons";
 
 export default function SendMoneyPage() {
   const { user, token } = useAuth();
@@ -16,6 +17,11 @@ export default function SendMoneyPage() {
   const [loading, setLoading] = useState(false);
   const [recipient, setRecipient] = useState(null);   // null | { full_name, phone_number } | "not_found"
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [confirmError, setConfirmError] = useState(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const digits = phoneLocal.replace(/\D/g, "");
   const fullPhone = phoneLocal.startsWith("+") ? phoneLocal : "+250" + digits;
@@ -56,14 +62,31 @@ export default function SendMoneyPage() {
     if (parsedAmt < 1) { setError("Enter an amount to send."); return; }
     if (fullPhone === user?.phone_number) { setError("You cannot send money to yourself."); return; }
     setError(null);
-    setLoading(true);
+    setConfirmPassword("");
+    setConfirmError(null);
+    setConfirming(true);
+  }
+
+  async function handleConfirm(e) {
+    e.preventDefault();
+    if (!confirmPassword) { setConfirmError("Enter your password to confirm."); return; }
+    setConfirmError(null);
+    setConfirmLoading(true);
+    try {
+      await login(user.phone_number, confirmPassword);
+    } catch {
+      setConfirmError("Incorrect password. Please try again.");
+      setConfirmLoading(false);
+      return;
+    }
     try {
       const txn = await sendMoney(token, { recipient_phone: fullPhone, amount: parsedAmt });
+      setConfirming(false);
       setSuccess(txn);
     } catch (err) {
-      setError(err?.detail ?? "Transfer failed. Please try again.");
+      setConfirmError(err?.detail ?? "Transfer failed. Please try again.");
     } finally {
-      setLoading(false);
+      setConfirmLoading(false);
     }
   }
 
@@ -102,7 +125,7 @@ export default function SendMoneyPage() {
         <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white mb-1">Send money</h1>
         <p className="text-slate-400 dark:text-slate-500 text-sm mb-6">Money lands in their wallet the moment you confirm.</p>
 
-        <form onSubmit={handleSubmit} className="max-w-md space-y-4">
+        <form onSubmit={handleSubmit} className="max-w-2xl space-y-4">
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded-xl px-4 py-3">{error}</div>
           )}
@@ -211,6 +234,69 @@ export default function SendMoneyPage() {
           </button>
         </form>
       </div>
+
+      {/* ── Confirmation overlay ── */}
+      {confirming && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 bg-orange-100 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center shrink-0">
+                <LockIcon className="w-5 h-5 text-orange-500" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Confirm transfer</h3>
+                <p className="text-xs text-slate-400">Enter your password to authorise</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-2xl p-4 mb-5 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Recipient</span>
+                <span className="font-semibold text-slate-900 dark:text-white">{recipient?.full_name ?? fullPhone}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Amount</span>
+                <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(parsedAmt)}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200 dark:border-slate-600 pt-2 font-bold">
+                <span className="text-slate-900 dark:text-white">Total</span>
+                <span className="text-slate-900 dark:text-white">{formatCurrency(total)}</span>
+              </div>
+            </div>
+
+            {confirmError && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded-xl px-3 py-2 mb-3">{confirmError}</div>
+            )}
+
+            <form onSubmit={handleConfirm} className="space-y-3">
+              <div className="relative">
+                <input
+                  type={showConfirmPw ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Your password"
+                  autoFocus
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                />
+                <button type="button" onClick={() => setShowConfirmPw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showConfirmPw ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setConfirming(false)} disabled={confirmLoading}
+                  className="flex-1 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-sm disabled:opacity-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={confirmLoading}
+                  className="flex-1 bg-orange-500 text-white font-bold py-2.5 rounded-xl hover:bg-orange-600 disabled:opacity-50 text-sm">
+                  {confirmLoading ? "Sending…" : "Confirm →"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </SidebarLayout>
   );
 }

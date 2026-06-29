@@ -3,13 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { cashIn } from "../api/transactionApi";
+import { login } from "../api/authApi";
 import { formatCurrency } from "../utils/validation";
-import { CheckCircleIcon, InboxArrowDownIcon, RwandaFlagIcon } from "../components/Icons";
+import { CheckCircleIcon, InboxArrowDownIcon, RwandaFlagIcon, LockIcon, EyeIcon, EyeOffIcon } from "../components/Icons";
 
 const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
 
 export default function CashInPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const [phoneLocal, setPhoneLocal] = useState("");
   const [foundCustomer, setFoundCustomer] = useState(null);
@@ -18,6 +19,12 @@ export default function CashInPage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const [confirming, setConfirming] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [confirmError, setConfirmError] = useState(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const fullPhone = phoneLocal.startsWith("+") ? phoneLocal : "+250" + phoneLocal.replace(/\D/g, "");
   const parsedAmt = parseFloat(amount) || 0;
@@ -41,17 +48,35 @@ export default function CashInPage() {
     }
   }
 
-  async function handleCashIn() {
+  function handleCashIn() {
     if (parsedAmt < 1) { setError("Enter an amount."); return; }
     setError(null);
-    setLoading(true);
+    setConfirmPassword("");
+    setConfirmError(null);
+    setShowConfirmPw(false);
+    setConfirming(true);
+  }
+
+  async function handleConfirm(e) {
+    e.preventDefault();
+    if (!confirmPassword) { setConfirmError("Enter your password to confirm."); return; }
+    setConfirmError(null);
+    setConfirmLoading(true);
+    try {
+      await login(user.phone_number, confirmPassword);
+    } catch {
+      setConfirmError("Incorrect password. Please try again.");
+      setConfirmLoading(false);
+      return;
+    }
     try {
       const txn = await cashIn(token, { customer_phone: fullPhone, amount: parsedAmt });
+      setConfirming(false);
       setSuccess({ ...txn, customerName: foundCustomer?.full_name ?? fullPhone });
     } catch (err) {
-      setError(err?.detail ?? "Cash in failed. Please try again.");
+      setConfirmError(err?.detail ?? "Cash in failed. Please try again.");
     } finally {
-      setLoading(false);
+      setConfirmLoading(false);
     }
   }
 
@@ -166,7 +191,7 @@ export default function CashInPage() {
           </div>
         )}
 
-        {parsedAmt > 0 && phoneLocal.replace(/\D/g, "").length >= 9 && (
+        {parsedAmt > 0 && foundCustomer && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-5">
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-4">
               <InboxArrowDownIcon className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -179,6 +204,77 @@ export default function CashInPage() {
           </div>
         )}
       </div>
+
+      {/* ── Password confirmation overlay ── */}
+      {confirming && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 p-6">
+
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center shrink-0">
+                <LockIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Confirm cash in</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Enter your password to authorise</p>
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-2xl p-4 mb-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Customer</span>
+                <span className="font-semibold text-slate-900 dark:text-white">
+                  {foundCustomer?.full_name ?? fullPhone}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Phone</span>
+                <span className="font-mono text-slate-700 dark:text-slate-300 text-xs">{fullPhone}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200 dark:border-slate-600 pt-2 font-bold">
+                <span className="text-slate-900 dark:text-white">Amount to credit</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{formatCurrency(parsedAmt)}</span>
+              </div>
+            </div>
+
+            {confirmError && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded-xl px-3 py-2 mb-4">
+                {confirmError}
+              </div>
+            )}
+
+            <form onSubmit={handleConfirm} className="space-y-3">
+              <div className="relative">
+                <input
+                  type={showConfirmPw ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Your password"
+                  autoFocus
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                />
+                <button type="button" onClick={() => setShowConfirmPw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showConfirmPw ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setConfirming(false)} disabled={confirmLoading}
+                  className="flex-1 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-sm disabled:opacity-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={confirmLoading}
+                  className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl hover:bg-emerald-700 disabled:opacity-50 text-sm">
+                  {confirmLoading ? "Processing…" : "Confirm cash in"}
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
     </SidebarLayout>
   );
 }

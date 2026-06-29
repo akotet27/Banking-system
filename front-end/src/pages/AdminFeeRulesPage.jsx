@@ -15,14 +15,14 @@ async function api(path, token, opts = {}) {
 const DEFAULT_RULES = [
   { transaction_type: "cash_in",     fee_percentage: "0.0",  min_fee: "0",  max_fee: "0",   agent_commission: "0" },
   { transaction_type: "cash_out",    fee_percentage: "1.0",  min_fee: "5",  max_fee: "200", agent_commission: "50" },
-  { transaction_type: "send",        fee_percentage: "0.5",  min_fee: "1",  max_fee: "50",  agent_commission: "" },
+  { transaction_type: "send_money",  fee_percentage: "0.5",  min_fee: "1",  max_fee: "50",  agent_commission: "" },
   { transaction_type: "pay_merchant",fee_percentage: "0.3",  min_fee: "0",  max_fee: "100", agent_commission: "" },
 ];
 
 const TYPE_CONFIG = {
   cash_in:      { label: "Cash in",      sub: "Customer deposits cash with an agent",   Icon: InboxArrowDownIcon, iconBg: "bg-emerald-100 dark:bg-emerald-900/30", iconColor: "text-emerald-600", feePaid: "Always free",  status: "Active" },
   cash_out:     { label: "Cash out",     sub: "Customer withdraws cash via an agent",   Icon: ArrowDownIcon,      iconBg: "bg-blue-100 dark:bg-blue-900/30",       iconColor: "text-blue-600",    feePaid: "customer",     status: "Active" },
-  send:         { label: "Send money",   sub: "Customer-to-customer transfer",          Icon: SendIcon,           iconBg: "bg-orange-100 dark:bg-orange-900/30",   iconColor: "text-orange-600",  feePaid: "sender",       status: "Active" },
+  send_money:   { label: "Send money",   sub: "Customer-to-customer transfer",          Icon: SendIcon,           iconBg: "bg-orange-100 dark:bg-orange-900/30",   iconColor: "text-orange-600",  feePaid: "sender",       status: "Active" },
   pay_merchant: { label: "Pay merchant", sub: "Customer pays a registered merchant",    Icon: StoreIcon,          iconBg: "bg-purple-100 dark:bg-purple-900/30",   iconColor: "text-purple-600",  feePaid: "merchant",     status: "Active" },
 };
 

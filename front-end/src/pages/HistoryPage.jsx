@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { getTransactions } from "../api/walletApi";
@@ -93,6 +94,10 @@ export default function HistoryPage() {
     <SidebarLayout>
       <div className="w-full min-h-full px-4 py-5 md:px-8 md:py-7 bg-slate-50 dark:bg-slate-900">
 
+        <Link to="/dashboard" className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1 mb-5">
+          ← Back to dashboard
+        </Link>
+
         {/* Header */}
         <div className="mb-5">
           <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white">Transaction history</h1>
@@ -148,9 +153,9 @@ export default function HistoryPage() {
                   const type = getTxType(t, user?.id);
                   const meta = TYPE_META[type] ?? TYPE_META.send;
                   const debit = isDebit(t, user?.id);
-                  const time = new Date(t.created_at).toLocaleTimeString("en-RW", {
-                    hour: "2-digit", minute: "2-digit",
-                  });
+                  const dt = new Date(t.created_at);
+                  const dateStr = dt.toLocaleDateString("en-RW", { month: "short", day: "numeric", year: "numeric" });
+                  const timeStr = dt.toLocaleTimeString("en-RW", { hour: "2-digit", minute: "2-digit" });
                   return (
                     <div key={t.id} className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
                       <div className={`w-9 h-9 md:w-10 md:h-10 ${meta.color} ${meta.text} rounded-xl flex items-center justify-center shrink-0`}>
@@ -158,15 +163,14 @@ export default function HistoryPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{getTxLabel(t, user?.id)}</p>
-                        <p className="text-xs text-slate-400">{time} · {meta.label}</p>
+                        <p className="text-xs text-slate-400">{dateStr} · {timeStr}</p>
+                        <p className="text-[10px] text-slate-300 dark:text-slate-600 font-mono">#{t.id}</p>
                       </div>
                       <div className="text-right shrink-0">
                         <p className={`text-sm font-bold ${debit ? "text-red-500" : "text-emerald-600"}`}>
                           {debit ? "−" : "+"}{formatCurrency(t.amount)}
                         </p>
-                        {t.fee > 0 && (
-                          <p className="text-[11px] text-slate-400 hidden sm:block">fee {formatCurrency(t.fee)}</p>
-                        )}
+                        <p className="text-[11px] text-slate-400">{parseFloat(t.fee) > 0 ? `fee ${formatCurrency(t.fee)}` : "no fee"}</p>
                       </div>
                     </div>
                   );

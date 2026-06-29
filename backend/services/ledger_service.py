@@ -35,15 +35,18 @@ def process_cash_in(
     if existing := _idempotent_lookup(db, idempotency_key):
         return existing
 
+    fee = calculate_fee(db, "cash_in", amount)
+    total_debit = amount + fee
+
     try:
         agent_wallet = _get_wallet_for_update(db, agent_id)
         customer_wallet = _get_wallet_for_update(db, customer_id)
 
         agent_float = Decimal(str(agent_wallet.float_balance or 0))
-        if agent_float < amount:
+        if agent_float < total_debit:
             raise HTTPException(status_code=400, detail="Insufficient agent float balance")
 
-        agent_wallet.float_balance = agent_float - amount
+        agent_wallet.float_balance = agent_float - total_debit
         customer_wallet.balance = Decimal(str(customer_wallet.balance)) + amount
 
         txn = Transaction(
@@ -51,8 +54,8 @@ def process_cash_in(
             initiator_id=agent_id,
             counterparty_id=customer_id,
             amount=amount,
-            fee=Decimal("0"),
-            fee_paid_by="n/a",
+            fee=fee,
+            fee_paid_by="agent" if fee > Decimal("0") else "n/a",
             net_amount=amount,
             idempotency_key=idempotency_key,
             status="completed",

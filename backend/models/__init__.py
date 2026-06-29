@@ -7,3 +7,4 @@ from .applications import AgentApplication, MerchantApplication
 from .session import AgentSession, SessionAuditLog
 from .transaction import Transaction
 from .fee_rule import FeeRule
+from .float_request import FloatRequest

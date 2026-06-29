@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
-import { SearchIcon, CheckCircleIcon, ExclamationIcon } from "../components/Icons";
+import { SearchIcon, CheckCircleIcon, ExclamationIcon, XIcon } from "../components/Icons";
 
 const BASE = "http://localhost:8000";
 function authed(token) { return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }; }
@@ -34,6 +34,12 @@ export default function AdminUsersPage() {
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState(null);
 
+  // Edit modal state
+  const [editUser, setEditUser] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState(null);
+
   const load = () => {
     setLoading(true);
     api("/admin/users?limit=100", token)
@@ -43,6 +49,29 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => { load(); }, [token]);
+
+  function openEdit(u) {
+    setEditUser(u);
+    setEditForm({ full_name: u.full_name ?? "", email: u.email ?? "", role: u.role, kyc_status: u.kyc_status ?? "pending" });
+    setEditError(null);
+  }
+
+  async function handleEditSave() {
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const updated = await api(`/admin/users/${editUser.id}`, token, {
+        method: "PATCH",
+        body: JSON.stringify(editForm),
+      });
+      setUsers(us => us.map(u => u.id === updated.id ? { ...u, ...updated } : u));
+      setEditUser(null);
+    } catch (e) {
+      setEditError(e?.detail ?? "Failed to save.");
+    } finally {
+      setEditLoading(false);
+    }
+  }
 
   async function toggleFreeze(user) {
     setActionLoading(user.id);
@@ -102,7 +131,6 @@ export default function AdminUsersPage() {
                     : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                 }`}>
                 {t.label}
-                <span className="text-xs opacity-60">{roleCounts[t.key] ?? 0}</span>
               </button>
             ))}
           </div>
@@ -184,19 +212,27 @@ export default function AdminUsersPage() {
                           {u.created_at ? new Date(u.created_at).toLocaleDateString("en-RW") : "—"}
                         </td>
                         <td className="px-5 py-4">
-                          {u.role !== "admin" && (
+                          <div className="flex items-center gap-2">
                             <button
-                              onClick={() => toggleFreeze(u)}
-                              disabled={actionLoading === u.id}
-                              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
-                                u.is_frozen
-                                  ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100"
-                                  : "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100"
-                              } disabled:opacity-40`}
+                              onClick={() => openEdit(u)}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 hover:bg-violet-100 whitespace-nowrap"
                             >
-                              {actionLoading === u.id ? "…" : u.is_frozen ? "Unfreeze" : "Freeze"}
+                              Edit
                             </button>
-                          )}
+                            {u.role !== "admin" && (
+                              <button
+                                onClick={() => toggleFreeze(u)}
+                                disabled={actionLoading === u.id}
+                                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap ${
+                                  u.is_frozen
+                                    ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100"
+                                    : "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100"
+                                } disabled:opacity-40`}
+                              >
+                                {actionLoading === u.id ? "…" : u.is_frozen ? "Unfreeze" : "Freeze"}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -207,6 +243,67 @@ export default function AdminUsersPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Edit user modal ── */}
+      {editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">Edit user</h3>
+              <button onClick={() => setEditUser(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded-xl px-3 py-2 mb-4">{editError}</div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Full name</label>
+                <input value={editForm.full_name} onChange={e => setEditForm(f => ({ ...f, full_name: e.target.value }))}
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Email</label>
+                <input type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Role</label>
+                <select value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500">
+                  <option value="customer">Customer</option>
+                  <option value="agent">Agent</option>
+                  <option value="merchant">Merchant</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">KYC status</label>
+                <select value={editForm.kyc_status} onChange={e => setEditForm(f => ({ ...f, kyc_status: e.target.value }))}
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500">
+                  <option value="pending">Pending</option>
+                  <option value="verified">Verified</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setEditUser(null)}
+                className="flex-1 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-medium py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-sm">
+                Cancel
+              </button>
+              <button onClick={handleEditSave} disabled={editLoading}
+                className="flex-1 bg-violet-600 text-white font-bold py-2.5 rounded-xl hover:bg-violet-700 disabled:opacity-50 text-sm">
+                {editLoading ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </SidebarLayout>
   );
 }

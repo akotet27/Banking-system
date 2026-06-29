@@ -1,5 +1,7 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { getMe } from "../api/authApi";
+
+const INACTIVITY_MS = 3 * 60 * 1000; // 3 minutes
 
 const AuthContext = createContext(null);
 
@@ -8,6 +10,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("ib_token"));
   const [loading, setLoading] = useState(true);
   const [networkError, setNetworkError] = useState(false);
+  const inactivityRef = useRef(null);
 
   useEffect(() => {
     if (!token) {
@@ -30,6 +33,30 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, [token]);
 
+  // Inactivity auto-logout
+  useEffect(() => {
+    if (!token) return;
+
+    function resetTimer() {
+      clearTimeout(inactivityRef.current);
+      inactivityRef.current = setTimeout(() => {
+        localStorage.removeItem("ib_token");
+        setToken(null);
+        setUser(null);
+        setNetworkError(false);
+      }, INACTIVITY_MS);
+    }
+
+    const events = ["mousemove", "keydown", "mousedown", "touchstart", "scroll"];
+    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+      clearTimeout(inactivityRef.current);
+    };
+  }, [token]);
+
   function signIn(newToken, userData) {
     localStorage.setItem("ib_token", newToken);
     setToken(newToken);
@@ -38,6 +65,7 @@ export function AuthProvider({ children }) {
   }
 
   function signOut() {
+    clearTimeout(inactivityRef.current);
     localStorage.removeItem("ib_token");
     setToken(null);
     setUser(null);

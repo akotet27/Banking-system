@@ -45,6 +45,14 @@ export default function AdminDashboardPage() {
   const [auditLog, setAuditLog] = useState([]);
   const [userMap, setUserMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [txnPage, setTxnPage] = useState(0);
+  const TXN_PAGE_SIZE = 10;
+  const [floatRequests, setFloatRequests] = useState([]);
+  const [floatActionLoading, setFloatActionLoading] = useState(null);
+
+  function loadFloatRequests() {
+    api("/admin/float-requests?status=pending", token).then(r => setFloatRequests(r ?? [])).catch(() => {});
+  }
 
   useEffect(() => {
     Promise.all([
@@ -54,21 +62,37 @@ export default function AdminDashboardPage() {
       api("/admin/applications/merchants", token).catch(() => []),
       api("/admin/audit-log?limit=5", token).catch(() => []),
       api("/admin/users?limit=500", token).catch(() => []),
-    ]).then(([s, txns, agents, merchants, audit, users]) => {
+      api("/admin/float-requests?status=pending", token).catch(() => []),
+    ]).then(([s, txns, agents, merchants, audit, users, floats]) => {
       setStats(s);
       setTransactions(txns ?? []);
       setAgentApps(agents ?? []);
       setMerchantApps(merchants ?? []);
       setAuditLog(audit ?? []);
+      setFloatRequests(floats ?? []);
       const map = {};
       (users ?? []).forEach(u => { map[u.id] = u.phone_number; });
       setUserMap(map);
     }).finally(() => setLoading(false));
   }, [token]);
 
+  async function handleFloatAction(id, action) {
+    setFloatActionLoading(id + action);
+    try {
+      await fetch(`${BASE}/admin/float-requests/${id}/${action}`, {
+        method: "POST",
+        headers: authed(token),
+      });
+      loadFloatRequests();
+    } catch { /* ignore */ } finally {
+      setFloatActionLoading(null);
+    }
+  }
+
   const pendingAgents    = agentApps.filter(a => a.status === "pending");
   const pendingMerchants = merchantApps.filter(a => a.status === "pending");
-  const pendingTotal     = pendingAgents.length + pendingMerchants.length;
+  const pendingFloats    = floatRequests.filter(r => r.status === "pending");
+  const pendingTotal     = pendingAgents.length + pendingMerchants.length + pendingFloats.length;
 
   const volByType = {};
   transactions.forEach(t => {
@@ -105,7 +129,7 @@ export default function AdminDashboardPage() {
     {
       label: "Pending approvals",
       value: loading ? "—" : String(pendingTotal),
-      sub: `${pendingAgents.length} agents · ${pendingMerchants.length} merchants`,
+      sub: `${pendingAgents.length} agents · ${pendingMerchants.length} merchants · ${pendingFloats.length} floats`,
       Icon: ClockIcon,
       color: pendingTotal > 0 ? "text-amber-600" : "text-slate-400",
       bg: pendingTotal > 0 ? "bg-amber-50 dark:bg-amber-900/20" : "bg-slate-50 dark:bg-slate-800",
@@ -236,60 +260,152 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Activity table — full width, scrollable */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-            <h2 className="font-bold text-slate-900 dark:text-white">Recent transactions</h2>
-            <span className="text-xs text-slate-400 dark:text-slate-500">{transactions.length} total</span>
-          </div>
+        {/* Activity table — paginated */}
+        {(() => {
+          const totalPages = Math.ceil(transactions.length / TXN_PAGE_SIZE);
+          const pageSlice = transactions.slice(txnPage * TXN_PAGE_SIZE, (txnPage + 1) * TXN_PAGE_SIZE);
+          return (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+                <h2 className="font-bold text-slate-900 dark:text-white">Recent transactions</h2>
+                <span className="text-xs text-slate-400 dark:text-slate-500">{transactions.length} total</span>
+              </div>
 
-          {loading ? (
-            <div className="p-5 space-y-3">
-              {[0,1,2,3,4].map(i => <div key={i} className="h-10 bg-slate-100 dark:bg-slate-700 rounded-lg animate-pulse" />)}
+              {loading ? (
+                <div className="p-5 space-y-3">
+                  {[0,1,2,3,4].map(i => <div key={i} className="h-10 bg-slate-100 dark:bg-slate-700 rounded-lg animate-pulse" />)}
+                </div>
+              ) : transactions.length === 0 ? (
+                <p className="text-slate-400 text-sm text-center py-12">No transactions yet.</p>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
+                          <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Time</th>
+                          <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Type</th>
+                          <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">From</th>
+                          <th className="text-right text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Amount</th>
+                          <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Fee</th>
+                          <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
+                        {pageSlice.map(t => {
+                          const type = t.type ?? "";
+                          const typeCfg = TYPE_META[type] ?? { bg: "bg-slate-100 dark:bg-slate-700", text: "text-slate-600 dark:text-slate-300", label: type };
+                          const statusCfg = STATUS_META[t.status] ?? { bg: "bg-slate-100 dark:bg-slate-700", text: "text-slate-600 dark:text-slate-300" };
+                          const phone = userMap[t.initiator_id] ?? `#${t.initiator_id}`;
+                          return (
+                            <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                              <td className="px-5 py-3 whitespace-nowrap text-slate-500 dark:text-slate-400 text-xs">{fmtTime(t.created_at)}</td>
+                              <td className="px-5 py-3 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${typeCfg.bg} ${typeCfg.text}`}>
+                                  {typeCfg.label}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3 whitespace-nowrap font-mono text-xs text-slate-700 dark:text-slate-300">{phone}</td>
+                              <td className="px-5 py-3 whitespace-nowrap text-right font-bold text-slate-900 dark:text-white">{fmt(parseFloat(t.amount))} <span className="text-slate-400 font-normal">RWF</span></td>
+                              <td className="px-5 py-3 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">{parseFloat(t.fee) > 0 ? fmt(parseFloat(t.fee)) + " RWF" : "—"}</td>
+                              <td className="px-5 py-3 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${statusCfg.bg} ${statusCfg.text}`}>
+                                  {t.status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 dark:border-slate-700">
+                      <span className="text-xs text-slate-400 dark:text-slate-500">
+                        Page {txnPage + 1} of {totalPages} · {transactions.length} transactions
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setTxnPage(p => Math.max(0, p - 1))}
+                          disabled={txnPage === 0}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          ← Prev
+                        </button>
+                        <button
+                          onClick={() => setTxnPage(p => Math.min(totalPages - 1, p + 1))}
+                          disabled={txnPage >= totalPages - 1}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          ) : transactions.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-12">No transactions yet.</p>
-          ) : (
-            <div className="overflow-auto max-h-96">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10">
-                  <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
-                    <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Time</th>
-                    <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Type</th>
-                    <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">From</th>
-                    <th className="text-right text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Amount</th>
-                    <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                  {transactions.map(t => {
-                    const type = t.transaction_type ?? t.type ?? "";
-                    const typeCfg = TYPE_META[type] ?? { bg: "bg-slate-100 dark:bg-slate-700", text: "text-slate-600 dark:text-slate-300", label: type };
-                    const statusCfg = STATUS_META[t.status] ?? { bg: "bg-slate-100 dark:bg-slate-700", text: "text-slate-600 dark:text-slate-300" };
-                    const phone = userMap[t.initiator_id] ?? `#${t.initiator_id}`;
-                    return (
-                      <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                        <td className="px-5 py-3 whitespace-nowrap text-slate-500 dark:text-slate-400 text-xs">{fmtTime(t.created_at)}</td>
-                        <td className="px-5 py-3 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${typeCfg.bg} ${typeCfg.text}`}>
-                            {typeCfg.label}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3 whitespace-nowrap font-mono text-xs text-slate-700 dark:text-slate-300">{phone}</td>
-                        <td className="px-5 py-3 whitespace-nowrap text-right font-bold text-slate-900 dark:text-white">{fmt(parseFloat(t.amount))} <span className="text-slate-400 font-normal">RWF</span></td>
-                        <td className="px-5 py-3 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${statusCfg.bg} ${statusCfg.text}`}>
-                            {t.status}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          );
+        })()}
+
+        {/* Float top-up requests */}
+        {(floatRequests.length > 0 || loading) && (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-slate-900 dark:text-white">Float top-up requests</h2>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Agents requesting float balance increases</p>
+              </div>
+              {floatRequests.length > 0 && (
+                <span className="text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2.5 py-1 rounded-full">
+                  {floatRequests.length} pending
+                </span>
+              )}
             </div>
-          )}
-        </div>
+            {loading ? (
+              <div className="p-4 space-y-3">
+                {[0,1].map(i => <div key={i} className="h-14 bg-slate-100 dark:bg-slate-700 rounded-xl animate-pulse" />)}
+              </div>
+            ) : floatRequests.length === 0 ? (
+              <p className="px-6 py-8 text-slate-400 dark:text-slate-500 text-sm text-center">No pending float requests.</p>
+            ) : (
+              <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
+                {floatRequests.map(r => (
+                  <div key={r.id} className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center shrink-0">
+                        <span className="text-blue-700 dark:text-blue-400 text-xs font-bold">
+                          {(r.agent_name ?? r.agent_phone ?? "?").slice(0, 2).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{r.agent_name ?? r.agent_phone ?? "Agent"}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{r.agent_phone} · {r.created_at ? fmtTime(r.created_at) : ""}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold text-slate-900 dark:text-white">{fmt(r.amount)} RWF</span>
+                      <button
+                        onClick={() => handleFloatAction(r.id, "approve")}
+                        disabled={floatActionLoading === r.id + "approve"}
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 disabled:opacity-50 transition-colors"
+                      >
+                        {floatActionLoading === r.id + "approve" ? "..." : "Approve"}
+                      </button>
+                      <button
+                        onClick={() => handleFloatAction(r.id, "reject")}
+                        disabled={floatActionLoading === r.id + "reject"}
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 disabled:opacity-50 transition-colors"
+                      >
+                        {floatActionLoading === r.id + "reject" ? "..." : "Reject"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </SidebarLayout>

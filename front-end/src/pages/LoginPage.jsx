@@ -190,15 +190,13 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-[46%] bg-[#0B1D3E] flex-col">
         <div className="px-10 py-8">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-orange-500 rounded-xl flex items-center justify-center">
-              <span className="text-white font-black text-base">I</span>
-            </div>
+            <LogoMark size={34} variant="dark" />
             <span className="text-white font-bold text-xl tracking-tight">Ishimwe Bank</span>
           </div>
         </div>
         <div className="flex-1 flex flex-col justify-center px-10">
-          <h1 className="text-[2.5rem] font-extrabold text-white leading-tight mb-5">
-            Your number is<br />your account.<br />Your fingerprint<br />is your key.
+          <h1 className="text-[1.75rem] font-extrabold text-white leading-snug mb-5">
+            Banking made simple,<br />secure, and instant.
           </h1>
           <p className="text-slate-300 text-sm leading-relaxed mb-10">
             Send money, cash out, and pay merchants — with privacy built into every transaction, not bolted on.

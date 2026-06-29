@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { formatDate } from "../utils/validation";
@@ -29,6 +29,7 @@ function InfoRow({ label, value }) {
 
 export default function ProfilePage() {
   const { user, token, signIn } = useAuth();
+  const navigate = useNavigate();
   const [autoExpire] = useState(true);
   const [credentials, setCredentials] = useState([]);
   const [enrollStatus, setEnrollStatus] = useState(null); // null | "enrolling" | "success" | "error"
@@ -141,6 +142,10 @@ export default function ProfilePage() {
   return (
     <SidebarLayout>
       <div className="w-full min-h-full px-4 py-5 md:px-8 md:py-7 bg-slate-50 dark:bg-slate-900">
+
+        <button onClick={() => navigate(-1)} className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1 mb-5">
+          ← Back
+        </button>
 
         {/* Header */}
         <div className="mb-5">

@@ -251,7 +251,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div style={{ flex: "1 1 260px", display: "flex", justifyContent: "center", position: "relative" }}>
+        <div className="hidden md:flex" style={{ flex: "1 1 260px", justifyContent: "center", position: "relative" }}>
           <div style={{ position: "absolute", width: 320, height: 320, background: "radial-gradient(circle, rgba(26,115,196,.16) 0%, transparent 70%)", top: "50%", left: "50%", transform: "translate(-50%,-50%)", pointerEvents: "none" }} />
           <PhoneMockup />
         </div>

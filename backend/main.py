@@ -14,6 +14,7 @@ from .models import (  # noqa: F401
     AgentSession,
     BiometricCredential,
     FeeRule,
+    FloatRequest,
     KycRequest,
     MerchantApplication,
     OtpCode,

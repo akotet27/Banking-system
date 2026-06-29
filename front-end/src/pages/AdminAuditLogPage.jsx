@@ -57,6 +57,22 @@ export default function AdminAuditLogPage() {
     !search || e.event_type?.toLowerCase().includes(search.toLowerCase()) || String(e.session_id).includes(search)
   );
 
+  function handleExport() {
+    const rows = [["Timestamp", "Event", "Session ID", "Notes"]];
+    filtered.forEach(e => {
+      const ts = new Date(e.created_at).toISOString();
+      rows.push([ts, e.event_type ?? "", String(e.session_id ?? ""), e.notes ?? ""]);
+    });
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <SidebarLayout>
       <div className="p-4 md:p-8 bg-slate-50 dark:bg-slate-900 min-h-full">
@@ -67,9 +83,9 @@ export default function AdminAuditLogPage() {
             <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Audit log</h1>
             <p className="text-slate-400 text-sm mt-0.5">Every session event, system change, and admin action — in order.</p>
           </div>
-          <button className="self-start sm:self-auto shrink-0 flex items-center gap-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-sm px-4 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+          <button onClick={handleExport} className="self-start sm:self-auto shrink-0 flex items-center gap-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-sm px-4 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
             <DownloadIcon className="w-4 h-4" />
-            Export
+            Export CSV
           </button>
         </div>
 

@@ -1,12 +1,15 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..dependencies.auth import require_role
 from ..models.applications import AgentApplication, MerchantApplication
 from ..models.fee_rule import FeeRule
+from ..models.float_request import FloatRequest
 from ..models.session import SessionAuditLog
 from ..models.transaction import Transaction
 from ..models.user import User
@@ -16,6 +19,13 @@ from ..schemas.fee_rule import FeeRuleOut, FeeRuleUpdate
 from ..schemas.transaction import TransactionOut
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None
+    kyc_status: Optional[str] = None
 
 
 # ── Agent applications ──────────────────────────────────────────────────────
@@ -182,6 +192,106 @@ def list_users(
         }
         for u in q.order_by(User.created_at.desc()).limit(limit).all()
     ]
+
+
+@router.patch("/users/{user_id}")
+def update_user(
+    user_id: int,
+    payload: UserUpdate,
+    current_user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
+    u = db.query(User).filter(User.id == user_id).first()
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+    for field, value in payload.model_dump(exclude_none=True).items():
+        setattr(u, field, value)
+    db.commit()
+    db.refresh(u)
+    return {
+        "id": u.id, "phone_number": u.phone_number, "email": u.email,
+        "full_name": u.full_name, "role": u.role,
+        "kyc_status": u.kyc_status, "is_frozen": u.is_frozen,
+        "created_at": u.created_at.isoformat() if u.created_at else None,
+    }
+
+
+# ── Float requests ──────────────────────────────────────────────────────────
+
+@router.get("/float-requests")
+def list_float_requests(
+    status: str = "pending",
+    current_user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
+    q = db.query(FloatRequest)
+    if status != "all":
+        q = q.filter(FloatRequest.status == status)
+    requests = q.order_by(FloatRequest.created_at.desc()).limit(100).all()
+    agent_ids = {r.agent_id for r in requests}
+    agents = {u.id: u for u in db.query(User).filter(User.id.in_(agent_ids)).all()}
+    return [
+        {
+            "id": r.id,
+            "agent_id": r.agent_id,
+            "agent_name": agents[r.agent_id].full_name if r.agent_id in agents else None,
+            "agent_phone": agents[r.agent_id].phone_number if r.agent_id in agents else None,
+            "amount": float(r.amount),
+            "status": r.status,
+            "notes": r.notes,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
+        }
+        for r in requests
+    ]
+
+
+class FloatReview(BaseModel):
+    notes: Optional[str] = None
+
+
+@router.post("/float-requests/{request_id}/approve")
+def approve_float_request(
+    request_id: int,
+    payload: FloatReview = FloatReview(),
+    current_user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
+    req = db.query(FloatRequest).filter(FloatRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Float request not found")
+    if req.status != "pending":
+        raise HTTPException(status_code=400, detail="Request is no longer pending")
+    wallet = db.query(Wallet).filter(Wallet.user_id == req.agent_id).first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Agent wallet not found")
+    wallet.float_balance += req.amount
+    req.status = "approved"
+    req.reviewed_by = current_user.id
+    req.reviewed_at = datetime.now(timezone.utc)
+    req.notes = payload.notes
+    db.commit()
+    return {"message": "Float request approved", "new_float_balance": float(wallet.float_balance)}
+
+
+@router.post("/float-requests/{request_id}/reject")
+def reject_float_request(
+    request_id: int,
+    payload: FloatReview = FloatReview(),
+    current_user: User = Depends(require_role("admin")),
+    db: Session = Depends(get_db),
+):
+    req = db.query(FloatRequest).filter(FloatRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Float request not found")
+    if req.status != "pending":
+        raise HTTPException(status_code=400, detail="Request is no longer pending")
+    req.status = "rejected"
+    req.reviewed_by = current_user.id
+    req.reviewed_at = datetime.now(timezone.utc)
+    req.notes = payload.notes
+    db.commit()
+    return {"message": "Float request rejected"}
 
 
 @router.get("/stats")

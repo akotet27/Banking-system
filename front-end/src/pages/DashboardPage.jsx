@@ -3,9 +3,8 @@ import { Link } from "react-router-dom";
 import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { getBalance, getTransactions } from "../api/walletApi";
-import { getPendingSessions, approveSessionSimple, declineSession, beginApproval, approveSession } from "../api/sessionApi";
-import { listCredentials } from "../api/biometricApi";
-import { prepareGetOptions, assertionToJSON } from "../utils/webauthn";
+import { getPendingSessions, declineSession } from "../api/sessionApi";
+import BiometricPrompt from "../components/BiometricPrompt";
 import { formatCurrency, timeAgo } from "../utils/validation";
 import {
   SendIcon, ArrowDownIcon, StoreIcon, InboxArrowDownIcon,
@@ -53,6 +52,7 @@ export default function DashboardPage() {
   const [kycStatus, setKycStatus] = useState(null);
   const [pendingSessions, setPendingSessions] = useState([]);
   const [sessionActionLoading, setSessionActionLoading] = useState(null);
+  const [approvalSession, setApprovalSession] = useState(null); // session being approved via BiometricPrompt
   const [loading, setLoading] = useState(true);
   const [balanceHidden, setBalanceHidden] = useState(false);
   const [agentModal, setAgentModal] = useState(null); // "cash_in" | "cash_out" | null
@@ -75,28 +75,13 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }, [token, user?.role]);
 
-  async function handleApprove(id) {
-    setSessionActionLoading(id + "_a");
-    try {
-      let used_fingerprint = false;
-      try {
-        const creds = await listCredentials(token);
-        if (creds.length > 0) {
-          const options = await beginApproval(token, id);
-          if (options._dev_mode) {
-            await approveSession(token, id, "phone_webauthn", null);
-          } else {
-            const assertion = await navigator.credentials.get({ publicKey: prepareGetOptions(options) });
-            await approveSession(token, id, "phone_webauthn", assertionToJSON(assertion));
-          }
-          used_fingerprint = true;
-        }
-      } catch { /* no credentials or user cancelled — fall through */ }
+  function handleApprove(session) {
+    setApprovalSession(session);
+  }
 
-      if (!used_fingerprint) await approveSessionSimple(token, id);
-      setPendingSessions(p => p.filter(s => s.session_id !== id));
-    } catch { }
-    finally { setSessionActionLoading(null); }
+  function handleApproved() {
+    setPendingSessions(p => p.filter(s => s.session_id !== approvalSession.session_id));
+    setApprovalSession(null);
   }
   async function handleDecline(id) {
     setSessionActionLoading(id + "_d");
@@ -202,9 +187,9 @@ export default function DashboardPage() {
                       className="py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 disabled:opacity-50">
                       {sessionActionLoading === s.session_id + "_d" ? "Declining…" : "Decline"}
                     </button>
-                    <button onClick={() => handleApprove(s.session_id)} disabled={!!sessionActionLoading}
-                      className="py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50">
-                      {sessionActionLoading === s.session_id + "_a" ? "Approving…" : "Approve"}
+                    <button onClick={() => handleApprove(s)} disabled={!!sessionActionLoading}
+                      className="py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-1.5">
+                      Approve
                     </button>
                   </div>
                 </div>
@@ -267,6 +252,16 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Biometric approval modal */}
+      {approvalSession && (
+        <BiometricPrompt
+          sessionId={approvalSession.session_id}
+          amount={approvalSession.amount}
+          onApproved={handleApproved}
+          onCancel={() => setApprovalSession(null)}
+        />
+      )}
 
       {/* Cash in / Cash out info modal */}
       {agentModal && (

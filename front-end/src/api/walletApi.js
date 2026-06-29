@@ -28,3 +28,7 @@ export function floatTopup(token, amount) {
     body: JSON.stringify({ amount }),
   });
 }
+
+export function getFloatRequests(token) {
+  return request("/wallets/float-requests", token);
+}

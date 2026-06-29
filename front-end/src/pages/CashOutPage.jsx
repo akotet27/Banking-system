@@ -8,6 +8,7 @@ import { formatCurrency } from "../utils/validation";
 import { CheckCircleIcon, BankNoteIcon, ClockIcon, ShieldCheckIcon, RwandaFlagIcon } from "../components/Icons";
 
 const POLL_MS = 3000;
+const SESSION_SECONDS = 60; // 1-minute approval window shown to agent
 const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
 
 export default function CashOutPage() {
@@ -23,12 +24,17 @@ export default function CashOutPage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [countdown, setCountdown] = useState(SESSION_SECONDS);
   const pollRef = useRef(null);
+  const countdownRef = useRef(null);
 
   const fullPhone = phoneLocal.startsWith("+") ? phoneLocal : "+250" + phoneLocal.replace(/\D/g, "");
   const parsedAmt = parseFloat(amount) || 0;
 
-  useEffect(() => () => clearInterval(pollRef.current), []);
+  useEffect(() => () => {
+    clearInterval(pollRef.current);
+    clearInterval(countdownRef.current);
+  }, []);
 
   async function handleLookup() {
     if (phoneLocal.replace(/\D/g, "").length < 9) { setError("Enter a valid phone number."); return; }
@@ -57,13 +63,20 @@ export default function CashOutPage() {
       const s = await initiateCashOut(token, { customer_phone: fullPhone, amount: parsedAmt });
       setSession(s);
       setStep("waiting");
+      setCountdown(SESSION_SECONDS);
+      countdownRef.current = setInterval(() => {
+        setCountdown(c => {
+          if (c <= 1) { clearInterval(countdownRef.current); return 0; }
+          return c - 1;
+        });
+      }, 1000);
       pollRef.current = setInterval(async () => {
         try {
           const status = await getSessionStatus(token, s.session_id);
           setSessionStatus(status);
-          if (status.status === "approved") { clearInterval(pollRef.current); setStep("ready"); }
-          if (status.status === "declined") { clearInterval(pollRef.current); setError("Customer declined this cash-out request."); setStep("form"); }
-          if (status.status === "expired")  { clearInterval(pollRef.current); setError("Session expired. Please start again."); setStep("form"); }
+          if (status.status === "approved") { clearInterval(pollRef.current); clearInterval(countdownRef.current); setStep("ready"); }
+          if (status.status === "declined") { clearInterval(pollRef.current); clearInterval(countdownRef.current); setError("Customer declined this cash-out request."); setStep("form"); }
+          if (status.status === "expired")  { clearInterval(pollRef.current); clearInterval(countdownRef.current); setError("Session expired. Please start again."); setStep("form"); }
         } catch { /* poll quietly */ }
       }, POLL_MS);
     } catch (err) {
@@ -215,9 +228,11 @@ export default function CashOutPage() {
               </div>
               <p className="text-white font-bold mb-2">Waiting for approval</p>
               <p className="text-slate-300 text-sm">The customer is confirming this request on their own phone. You will see the result the instant they respond - nothing more, nothing less.</p>
-              <div className="flex items-center justify-center gap-1.5 mt-4 text-slate-400 text-xs">
-                <ClockIcon className="w-3.5 h-3.5" />
-                Session #<span className="font-mono">{session?.session_id}</span>
+              <div className="flex flex-col items-center gap-1 mt-4">
+                <span className={`text-2xl font-black font-mono ${countdown < 10 ? "text-red-400" : "text-white"}`}>
+                  {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, "0")}
+                </span>
+                <span className="text-slate-400 text-xs">remaining · Session #{session?.session_id}</span>
               </div>
             </div>
 
@@ -235,7 +250,8 @@ export default function CashOutPage() {
 
             {error && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded-xl px-4 py-3">{error}</div>}
             <button className="w-full flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 font-medium py-3.5 rounded-xl cursor-not-allowed" disabled>
-              <ClockIcon className="w-4 h-4" /> Waiting for customer approval
+              <ClockIcon className="w-4 h-4" />
+              {countdown === 0 ? "Session expired" : `Expires in ${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, "0")}`}
             </button>
             <button onClick={reset} className="w-full border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm">
               Cancel session

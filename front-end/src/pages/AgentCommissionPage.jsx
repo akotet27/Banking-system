@@ -17,8 +17,8 @@ export default function AgentCommissionPage() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const cashIns  = transactions.filter((t) => t.transaction_type === "cash_in");
-  const cashOuts = transactions.filter((t) => t.transaction_type === "cash_out");
+  const cashIns  = transactions.filter((t) => t.type === "cash_in");
+  const cashOuts = transactions.filter((t) => t.type === "cash_out");
 
   const cashOutCommission = cashOuts.reduce((sum, t) => sum + (parseFloat(t.fee) || 0) * 0.5, 0);
   const cashInCommission  = cashIns.reduce((sum, t) => sum + (parseFloat(t.amount) || 0) * 0.001, 0);
@@ -117,8 +117,8 @@ export default function AgentCommissionPage() {
                 <div>When</div>
               </div>
               {transactions.slice(0, 15).map((t) => {
-                const isCashIn  = t.transaction_type === "cash_in";
-                const isCashOut = t.transaction_type === "cash_out";
+                const isCashIn  = t.type === "cash_in";
+                const isCashOut = t.type === "cash_out";
                 const commission = isCashOut
                   ? (parseFloat(t.fee) || 0) * 0.5
                   : isCashIn
@@ -131,11 +131,11 @@ export default function AgentCommissionPage() {
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${isCashIn ? "bg-emerald-500" : "bg-orange-500"}`}>
                         {String(t.id).slice(-2)}
                       </div>
-                      <span className="text-slate-600 font-medium truncate">{t.customer_phone?.slice(-9) ?? "â€”"}</span>
+                      <span className="text-slate-600 font-medium truncate">{t.counterparty_phone?.slice(-9) ?? "-"}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-600">
                       {isCashIn ? <InboxArrowDownIcon className="w-4 h-4 text-emerald-500" /> : <BankNoteIcon className="w-4 h-4 text-orange-500" />}
-                      {isCashIn ? "Cash in" : isCashOut ? "Cash out" : t.transaction_type}
+                      {isCashIn ? "Cash in" : isCashOut ? "Cash out" : t.type}
                     </div>
                     <div className="text-slate-900 font-semibold">{formatCurrency(t.amount)}</div>
                     <div className="text-emerald-600 font-bold">+{formatCurrency(commission)}</div>
