@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { getBalance, getTransactions } from "../api/walletApi";
 import { getPendingSessions, declineSession } from "../api/sessionApi";
 import BiometricPrompt from "../components/BiometricPrompt";
-import { formatCurrency, timeAgo } from "../utils/validation";
+import { formatCurrency } from "../utils/validation";
 import {
   SendIcon, ArrowDownIcon, StoreIcon, InboxArrowDownIcon,
   ExclamationIcon, ClockIcon, BankNoteIcon, EyeIcon, EyeOffIcon,
@@ -56,6 +56,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [balanceHidden, setBalanceHidden] = useState(false);
   const [agentModal, setAgentModal] = useState(null); // "cash_in" | "cash_out" | null
+  const [, setTick] = useState(0);
+  const tickRef = useRef(null);
+
+  useEffect(() => {
+    if (pendingSessions.length === 0) { clearInterval(tickRef.current); return; }
+    tickRef.current = setInterval(() => setTick(n => n + 1), 1000);
+    return () => clearInterval(tickRef.current);
+  }, [pendingSessions.length]);
 
   useEffect(() => {
     const kycFetch = fetch("http://localhost:8000/kyc/my-status", {
@@ -155,7 +163,7 @@ export default function DashboardPage() {
                 <div className="w-10 h-10 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center">
                   <Icon className="w-5 h-5 text-orange-500" />
                 </div>
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{label}</span>
+                <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">{label}</span>
               </>
             );
             return to
@@ -240,7 +248,11 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{txLabel(t, user?.id)}</p>
-                      <p className="text-xs text-slate-400">{timeAgo(t.created_at)} · {s.label}</p>
+                      <p className="text-xs text-slate-400">
+                        {new Date(t.created_at).toLocaleDateString("en-RW", { month: "short", day: "numeric", year: "numeric" })}
+                        {" · "}
+                        {new Date(t.created_at).toLocaleTimeString("en-RW", { hour: "2-digit", minute: "2-digit" })}
+                      </p>
                     </div>
                     <span className={`text-sm font-bold shrink-0 ${debit ? "text-red-500" : "text-emerald-600"}`}>
                       {debit ? "−" : "+"}{formatCurrency(t.amount)}

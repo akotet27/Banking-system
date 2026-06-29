@@ -100,7 +100,7 @@ export default function App() {
             <Route path="/dashboard" element={<ProtectedRoute roles={customer}><DashboardPage /></ProtectedRoute>} />
             <Route path="/send"      element={<ProtectedRoute roles={customer}><SendMoneyPage /></ProtectedRoute>} />
             <Route path="/pay"       element={<ProtectedRoute roles={customer}><PayMerchantPage /></ProtectedRoute>} />
-            <Route path="/history"   element={<ProtectedRoute roles={customer}><HistoryPage /></ProtectedRoute>} />
+            <Route path="/history"   element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
             <Route path="/profile"   element={<ProtectedRoute roles={customer}><ProfilePage /></ProtectedRoute>} />
             <Route path="/kyc"       element={<ProtectedRoute roles={customer}><KycPage /></ProtectedRoute>} />
 

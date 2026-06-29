@@ -5,13 +5,16 @@ import { getTransactions } from "../api/walletApi";
 import { formatCurrency } from "../utils/validation";
 import { InboxArrowDownIcon, BankNoteIcon, CheckCircleIcon, CreditCardIcon } from "../components/Icons";
 
+const PAGE_SIZE = 10;
+
 export default function AgentCommissionPage() {
   const { token } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
-    getTransactions(token, 50)
+    getTransactions(token, 200)
       .then((data) => setTransactions(data ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -45,14 +48,9 @@ export default function AgentCommissionPage() {
   return (
     <SidebarLayout>
       <div className="w-full min-h-full px-4 py-5 md:px-8 md:py-7 bg-slate-50 dark:bg-slate-900">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Commission</h1>
-            <p className="text-slate-400 text-sm mt-0.5">Your earnings from every transaction you&apos;ve processed.</p>
-          </div>
-          <div className="flex items-center gap-1.5 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-600 font-medium bg-white cursor-pointer hover:bg-slate-50">
-            This month â–¾
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Commission</h1>
+          <p className="text-slate-400 text-sm mt-0.5">Your earnings from every transaction you&apos;ve processed.</p>
         </div>
 
         {/* Summary banner */}
@@ -60,7 +58,7 @@ export default function AgentCommissionPage() {
           {loading ? (
             <div className="h-16 flex items-center gap-3">
               <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span className="text-white/60 text-sm">Loadingâ€¦</span>
+              <span className="text-white/60 text-sm">Loading&hellip;</span>
             </div>
           ) : (
             <div className="flex items-start justify-between gap-8">
@@ -109,14 +107,14 @@ export default function AgentCommissionPage() {
             <p className="px-6 py-10 text-center text-slate-400 text-sm">No transactions to report yet.</p>
           ) : (
             <>
-              <div className="grid grid-cols-5 px-6 py-2.5 bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+              <div className="grid grid-cols-5 px-6 py-2.5 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                 <div className="col-span-1">Customer</div>
                 <div>Transaction</div>
                 <div>Amount</div>
                 <div>Your commission</div>
                 <div>When</div>
               </div>
-              {transactions.slice(0, 15).map((t) => {
+              {transactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((t) => {
                 const isCashIn  = t.type === "cash_in";
                 const isCashOut = t.type === "cash_out";
                 const commission = isCashOut
@@ -124,7 +122,9 @@ export default function AgentCommissionPage() {
                   : isCashIn
                     ? (parseFloat(t.amount) || 0) * 0.001
                     : 0;
-                const time = new Date(t.created_at).toLocaleTimeString("en-RW", { hour: "2-digit", minute: "2-digit" });
+                const dt   = new Date(t.created_at);
+                const date = dt.toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" });
+                const time = dt.toLocaleTimeString("en-RW", { hour: "2-digit", minute: "2-digit" });
                 return (
                   <div key={t.id} className="grid grid-cols-5 px-6 py-4 border-b border-slate-50 hover:bg-slate-50 text-sm items-center">
                     <div className="col-span-1 flex items-center gap-2.5">
@@ -139,10 +139,42 @@ export default function AgentCommissionPage() {
                     </div>
                     <div className="text-slate-900 font-semibold">{formatCurrency(t.amount)}</div>
                     <div className="text-emerald-600 font-bold">+{formatCurrency(commission)}</div>
-                    <div className="text-slate-400">{time}</div>
+                    <div className="text-slate-400">
+                      <p>{date}</p>
+                      <p className="text-[11px]">{time}</p>
+                    </div>
                   </div>
                 );
               })}
+              {/* Pagination controls */}
+              {transactions.length > PAGE_SIZE && (() => {
+                const totalPages = Math.ceil(transactions.length / PAGE_SIZE);
+                const from = page * PAGE_SIZE + 1;
+                const to   = Math.min((page + 1) * PAGE_SIZE, transactions.length);
+                return (
+                  <div className="flex items-center justify-between px-6 py-3 border-t border-slate-100 dark:border-slate-700">
+                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                      {from}–{to} of {transactions.length} entries · page {page + 1} of {totalPages}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setPage(p => Math.max(0, p - 1))}
+                        disabled={page === 0}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        ← Prev
+                      </button>
+                      <button
+                        onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                        disabled={page >= totalPages - 1}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>

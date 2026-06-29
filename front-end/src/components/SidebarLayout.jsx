@@ -31,14 +31,16 @@ const AGENT_NAV = [
   { label: "Process cash out", to: "/cashout",    Icon: BankNoteIcon },
   { label: "KYC review",       to: "/kyc-review", Icon: ClockIcon },
   { label: "Commission",       to: "/commission", Icon: CreditCardIcon },
+  { label: "History",          to: "/history",    Icon: ListIcon },
 ];
 
 const ADMIN_NAV = [
-  { label: "Dashboard",  to: "/admin",           Icon: GridIcon },
-  { label: "Approvals",  to: "/admin/approvals", Icon: ClockIcon,    badgeKey: "pending" },
-  { label: "Fee rules",  to: "/admin/fee-rules", Icon: FilterIcon },
-  { label: "Audit log",  to: "/admin/audit-log", Icon: DocumentIcon },
-  { label: "All users",  to: "/admin/users",     Icon: UsersIcon },
+  { label: "Dashboard",    to: "/admin",           Icon: GridIcon },
+  { label: "Approvals",    to: "/admin/approvals", Icon: ClockIcon,    badgeKey: "pending" },
+  { label: "Transactions", to: "/history",         Icon: ListIcon },
+  { label: "Fee rules",    to: "/admin/fee-rules", Icon: FilterIcon },
+  { label: "Audit log",    to: "/admin/audit-log", Icon: DocumentIcon },
+  { label: "All users",    to: "/admin/users",     Icon: UsersIcon },
 ];
 
 function NavItems({ nav, pendingCount, onClose }) {

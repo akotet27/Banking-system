@@ -16,6 +16,9 @@ export default function AgentDashboardPage() {
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupMsg, setTopupMsg]         = useState(null);
   const [floatRequests, setFloatRequests] = useState([]);
+  const [txPage, setTxPage]               = useState(0);
+
+  const TX_PAGE_SIZE = 8;
 
   function loadData() {
     setLoading(true);
@@ -51,7 +54,6 @@ export default function AgentDashboardPage() {
 
   const firstName    = user?.full_name?.split(" ")[0] ?? "Agent";
   const floatBal     = wallet?.float_balance ?? 0;
-  const totalBal     = wallet?.balance ?? 0;
   const FLOAT_LIMIT  = 500_000;
   const floatPct     = Math.min((floatBal / FLOAT_LIMIT) * 100, 100);
   const hasPending   = floatRequests.some(r => r.status === "pending");
@@ -72,12 +74,6 @@ export default function AgentDashboardPage() {
       value: loading ? "—" : new Intl.NumberFormat("en-RW").format(floatBal),
       unit: "RWF",
       color: "text-blue-600 dark:text-blue-400",
-    },
-    {
-      label: "Wallet balance",
-      value: loading ? "—" : new Intl.NumberFormat("en-RW").format(totalBal),
-      unit: "RWF",
-      color: "text-slate-700 dark:text-slate-300",
     },
     {
       label: "Cash in today",
@@ -154,46 +150,77 @@ export default function AgentDashboardPage() {
               <div className="px-5 py-12 text-center text-slate-400 dark:text-slate-500 text-sm">
                 No transactions yet.
               </div>
-            ) : (
-              <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {transactions.map(t => {
-                  const isIn  = t.type === "cash_in";
-                  const dt    = new Date(t.created_at);
-                  const date  = dt.toLocaleDateString("en-RW", { day: "2-digit", month: "short" });
-                  const time  = dt.toLocaleTimeString("en-RW", { hour: "2-digit", minute: "2-digit" });
-                  const phone = t.counterparty_phone ?? "";
-                  return (
-                    <div key={t.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                        isIn
-                          ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
-                          : "bg-orange-100 dark:bg-orange-900/30 text-orange-500 dark:text-orange-400"
-                      }`}>
-                        {isIn
-                          ? <InboxArrowDownIcon className="w-4 h-4" />
-                          : <BankNoteIcon className="w-4 h-4" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                          {isIn ? "Cash In" : "Cash Out"}
-                        </p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                          {phone || "—"} · {date}, {time}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className={`text-sm font-bold ${isIn ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
-                          {isIn ? "+" : "-"}{formatCurrency(t.amount)}
-                        </p>
-                        {parseFloat(t.fee) > 0 && (
-                          <p className="text-[11px] text-slate-400 dark:text-slate-500">fee {formatCurrency(t.fee)}</p>
-                        )}
-                      </div>
+            ) : (() => {
+                const totalPages = Math.ceil(transactions.length / TX_PAGE_SIZE);
+                const pageSlice  = transactions.slice(txPage * TX_PAGE_SIZE, (txPage + 1) * TX_PAGE_SIZE);
+                const from = txPage * TX_PAGE_SIZE + 1;
+                const to   = Math.min((txPage + 1) * TX_PAGE_SIZE, transactions.length);
+                return (
+                  <>
+                    <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
+                      {pageSlice.map(t => {
+                        const isIn  = t.type === "cash_in";
+                        const dt    = new Date(t.created_at);
+                        const date  = dt.toLocaleDateString("en-RW", { day: "2-digit", month: "short" });
+                        const time  = dt.toLocaleTimeString("en-RW", { hour: "2-digit", minute: "2-digit" });
+                        const phone = t.counterparty_phone ?? "";
+                        return (
+                          <div key={t.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                              isIn
+                                ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+                                : "bg-orange-100 dark:bg-orange-900/30 text-orange-500 dark:text-orange-400"
+                            }`}>
+                              {isIn
+                                ? <InboxArrowDownIcon className="w-4 h-4" />
+                                : <BankNoteIcon className="w-4 h-4" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                {isIn ? "Cash In" : "Cash Out"}
+                              </p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                                {phone || "—"} · {date}, {time}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className={`text-sm font-bold ${isIn ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
+                                {isIn ? "+" : "-"}{formatCurrency(t.amount)}
+                              </p>
+                              {parseFloat(t.fee) > 0 && (
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500">fee {formatCurrency(t.fee)}</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 dark:border-slate-700">
+                        <span className="text-xs text-slate-400 dark:text-slate-500">
+                          {from}–{to} of {transactions.length} · page {txPage + 1} of {totalPages}
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setTxPage(p => Math.max(0, p - 1))}
+                            disabled={txPage === 0}
+                            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          >
+                            ← Prev
+                          </button>
+                          <button
+                            onClick={() => setTxPage(p => Math.min(totalPages - 1, p + 1))}
+                            disabled={txPage >= totalPages - 1}
+                            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          >
+                            Next →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
           </div>
 
           {/* Float management — takes 1/3 */}
