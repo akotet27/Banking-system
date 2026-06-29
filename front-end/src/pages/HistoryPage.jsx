@@ -7,8 +7,7 @@ import { formatCurrency } from "../utils/validation";
 import {
   SendIcon, ArrowDownIcon, StoreIcon, InboxArrowDownIcon, BankNoteIcon, SearchIcon,
 } from "../components/Icons";
-
-const BASE = "http://localhost:8000";
+import { API_BASE as BASE } from "../api/base.js";
 
 const CUSTOMER_TABS = ["All", "Sent", "Received", "Cash in", "Cash out", "Payments"];
 const ADMIN_TABS    = ["All", "Send money", "Cash in", "Cash out", "Payments"];

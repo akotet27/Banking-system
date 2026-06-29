@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_sender: str = ""  # From address; falls back to smtp_user if empty
 
+    # Comma-separated list of allowed CORS origins, e.g.:
+    # "https://your-app.netlify.app,http://localhost:5173"
+    cors_origins: str = "http://localhost:5173"
+
     webauthn_rp_id: str = "localhost"
     webauthn_origin: str = "http://localhost:5173"
 

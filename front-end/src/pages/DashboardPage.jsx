@@ -6,6 +6,7 @@ import { getBalance, getTransactions } from "../api/walletApi";
 import { getPendingSessions, declineSession } from "../api/sessionApi";
 import BiometricPrompt from "../components/BiometricPrompt";
 import { formatCurrency } from "../utils/validation";
+import { API_BASE } from "../api/base.js";
 import {
   SendIcon, ArrowDownIcon, StoreIcon, InboxArrowDownIcon,
   ExclamationIcon, ClockIcon, BankNoteIcon, EyeIcon, EyeOffIcon,
@@ -66,7 +67,7 @@ export default function DashboardPage() {
   }, [pendingSessions.length]);
 
   useEffect(() => {
-    const kycFetch = fetch("http://localhost:8000/kyc/my-status", {
+    const kycFetch = fetch(`${API_BASE}/kyc/my-status`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then((r) => r.json()).catch(() => null);
     const sessionsFetch = user?.role === "customer"

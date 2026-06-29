@@ -4,7 +4,7 @@ import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { UsersIcon, TrendingUpIcon, AlertCircleIcon, CheckCircleIcon, ClockIcon } from "../components/Icons";
 
-const BASE = "http://localhost:8000";
+import { API_BASE as BASE } from "../api/base.js";
 function authed(token) { return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }; }
 async function api(path, token) {
   const res = await fetch(`${BASE}${path}`, { headers: authed(token) });

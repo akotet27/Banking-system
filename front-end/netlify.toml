@@ -1,0 +1,13 @@
+[build]
+  base    = "front-end"
+  command = "npm run build"
+  publish = "front-end/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA fallback — all routes go to index.html so React Router works
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

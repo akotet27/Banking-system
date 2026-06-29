@@ -2,10 +2,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from .config import settings
 
-engine = create_engine(
-    settings.database_url,
-    connect_args={"check_same_thread": False},
-)
+# Render provides postgres:// URLs; SQLAlchemy requires postgresql://
+_db_url = settings.database_url
+if _db_url.startswith("postgres://"):
+    _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+
+# check_same_thread is SQLite-only
+_connect_args = {"check_same_thread": False} if _db_url.startswith("sqlite") else {}
+
+engine = create_engine(_db_url, connect_args=_connect_args)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

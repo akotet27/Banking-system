@@ -1,4 +1,4 @@
-const BASE = "http://localhost:8000";
+import { API_BASE as BASE } from "./base.js";
 
 async function request(path, options = {}) {
   let res;
