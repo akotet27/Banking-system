@@ -17,6 +17,7 @@ class KycRequestOut(BaseModel):
     customer_id: int
     agent_id: Optional[int]
     id_document_ref: Optional[str]
+    document_file: Optional[str] = None
     status: str
     reviewed_at: Optional[datetime]
     created_at: datetime

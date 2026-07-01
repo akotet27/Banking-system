@@ -182,12 +182,12 @@ export default function SendMoneyPage() {
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded-xl px-4 py-3">{error}</div>
           )}
 
-          {/* Frequent contacts */}
-          {contacts.length > 0 && (
+          {/* Frequent contacts (exclude merchants — use Pay Merchant for those) */}
+          {contacts.filter(c => c.role !== "merchant").length > 0 && (
             <div>
               <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Frequent contacts</p>
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                {contacts.map(c => (
+                {contacts.filter(c => c.role !== "merchant").map(c => (
                   <ContactChip key={c.id} contact={c} onSelect={selectContact} />
                 ))}
               </div>

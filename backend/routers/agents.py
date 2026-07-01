@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..dependencies.auth import require_role
-from ..models.applications import AgentApplication
+from ..models.applications import AgentApplication, MerchantApplication
 from ..models.user import User
 from ..schemas.applications import AgentApplicationOut
 
@@ -25,6 +25,20 @@ def apply_as_agent(
     )
     if existing:
         raise HTTPException(status_code=400, detail="Pending agent application already exists")
+
+    merchant_app = (
+        db.query(MerchantApplication)
+        .filter(
+            MerchantApplication.user_id == current_user.id,
+            MerchantApplication.status.in_(["pending", "approved"]),
+        )
+        .first()
+    )
+    if merchant_app:
+        raise HTTPException(
+            status_code=400,
+            detail="You already have a merchant application. You cannot apply for both roles at the same time.",
+        )
 
     app = AgentApplication(user_id=current_user.id)
     db.add(app)

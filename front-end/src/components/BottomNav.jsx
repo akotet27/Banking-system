@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   GridIcon, SendIcon, StoreIcon, ListIcon, UserIcon,
   InboxArrowDownIcon, BankNoteIcon, ClockIcon, CreditCardIcon,
+  UsersIcon, FilterIcon, ShieldCheckIcon,
 } from "./Icons";
 
 const CUSTOMER_NAV = [
@@ -27,12 +28,19 @@ const MERCHANT_NAV = [
   { label: "Profile", to: "/profile",   Icon: UserIcon },
 ];
 
+const ADMIN_NAV = [
+  { label: "Home",      to: "/admin",           Icon: GridIcon },
+  { label: "Approvals", to: "/admin/approvals", Icon: ClockIcon },
+  { label: "Users",     to: "/admin/users",     Icon: UsersIcon },
+  { label: "Fees",      to: "/admin/fee-rules", Icon: FilterIcon },
+  { label: "Audit",     to: "/admin/audit-log", Icon: ShieldCheckIcon },
+];
+
 export default function BottomNav() {
   const { user } = useAuth();
 
-  if (user?.role === "admin") return null;
-
   const nav =
+    user?.role === "admin"    ? ADMIN_NAV :
     user?.role === "agent"    ? AGENT_NAV :
     user?.role === "merchant" ? MERCHANT_NAV :
     CUSTOMER_NAV;
@@ -44,7 +52,7 @@ export default function BottomNav() {
           <NavLink
             key={to}
             to={to}
-            end={to === "/dashboard" || to === "/agent"}
+            end={to === "/dashboard" || to === "/agent" || to === "/admin"}
             className={({ isActive }) =>
               `flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${
                 isActive ? "text-orange-400" : "text-slate-400 hover:text-slate-200"

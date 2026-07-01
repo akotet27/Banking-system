@@ -40,10 +40,13 @@ const STEPS = [
 
 const RW_DISTRICTS = [
   "Kigali - Gasabo", "Kigali - Kicukiro", "Kigali - Nyarugenge",
-  "Eastern - Bugesera", "Eastern - Kayonza", "Eastern - Nyagatare", "Eastern - Rwamagana",
-  "Northern - Burera", "Northern - Gicumbi", "Northern - Musanze", "Northern - Rulindo",
-  "Southern - Huye", "Southern - Muhanga", "Southern - Nyanza", "Southern - Ruhango",
-  "Western - Karongi", "Western - Ngororero", "Western - Rubavu", "Western - Rusizi",
+  "Eastern - Bugesera", "Eastern - Gatsibo", "Eastern - Kayonza", "Eastern - Kirehe",
+  "Eastern - Ngoma", "Eastern - Nyagatare", "Eastern - Rwamagana",
+  "Northern - Burera", "Northern - Gakenke", "Northern - Gicumbi", "Northern - Musanze", "Northern - Rulindo",
+  "Southern - Gisagara", "Southern - Huye", "Southern - Kamonyi", "Southern - Muhanga",
+  "Southern - Nyamagabe", "Southern - Nyanza", "Southern - Nyaruguru", "Southern - Ruhango",
+  "Western - Karongi", "Western - Ngororero", "Western - Nyabihu", "Western - Nyamasheke",
+  "Western - Rubavu", "Western - Rusizi", "Western - Rutsiro",
 ];
 
 export default function RegisterPage() {

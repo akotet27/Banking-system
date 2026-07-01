@@ -120,8 +120,13 @@ function KycCard({ kyc, onAction, acting }) {
 
 /* ── Application Card (Agent / Merchant) ── */
 function AppCard({ app, type, onAction, acting }) {
-  const isAgent   = type === "agent";
-  const initials  = (app.business_name ?? app.full_name ?? `U${app.user_id}`).slice(0, 2).toUpperCase();
+  const isAgent  = type === "agent";
+  const nameStr  = app.full_name ?? `User #${app.user_id}`;
+  const initials = nameStr.trim().split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+  const kycColor = app.kyc_status === "verified"
+    ? "text-emerald-600 dark:text-emerald-400"
+    : "text-amber-600 dark:text-amber-400";
+
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-50 dark:border-slate-700/50">
@@ -130,11 +135,9 @@ function AppCard({ app, type, onAction, acting }) {
             {initials}
           </div>
           <div>
-            <p className="font-bold text-slate-900 dark:text-white text-sm leading-tight">
-              {app.business_name ?? app.full_name ?? `User #${app.user_id}`}
-            </p>
+            <p className="font-bold text-slate-900 dark:text-white text-sm leading-tight">{nameStr}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-              {app.proposed_location ?? "Location not specified"}
+              {app.phone_number ?? "—"}{app.location ? ` · ${app.location}` : ""}
             </p>
           </div>
         </div>
@@ -144,44 +147,32 @@ function AppCard({ app, type, onAction, acting }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-slate-100 dark:bg-slate-700/50">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-100 dark:bg-slate-700/50">
+        <div className="bg-white dark:bg-slate-800 px-5 py-3.5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Email</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{app.email ?? "—"}</p>
+        </div>
+        <div className="bg-white dark:bg-slate-800 px-5 py-3.5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">District</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">{app.location ?? "—"}</p>
+        </div>
         {isAgent ? (
-          <>
-            <div className="bg-white dark:bg-slate-800 px-5 py-3.5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Proposed float</p>
-              <p className="text-sm font-bold text-slate-900 dark:text-white">
-                {app.proposed_float ? new Intl.NumberFormat("en-RW").format(app.proposed_float) + " RWF" : "—"}
-              </p>
-            </div>
-            <div className="bg-white dark:bg-slate-800 px-5 py-3.5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Documents</p>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">ID · Business license</p>
-            </div>
-            <div className="bg-white dark:bg-slate-800 px-5 py-3.5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-                {app.status}
-              </span>
-            </div>
-          </>
+          <div className="bg-white dark:bg-slate-800 px-5 py-3.5">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">KYC</p>
+            <p className={`text-sm font-bold capitalize ${kycColor}`}>{app.kyc_status ?? "none"}</p>
+          </div>
         ) : (
-          <>
-            <div className="bg-white dark:bg-slate-800 px-5 py-3.5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Business name</p>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">{app.business_name ?? "—"}</p>
-            </div>
-            <div className="bg-white dark:bg-slate-800 px-5 py-3.5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Documents</p>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">Business license · Tax ID</p>
-            </div>
-            <div className="bg-white dark:bg-slate-800 px-5 py-3.5">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-                {app.status}
-              </span>
-            </div>
-          </>
+          <div className="bg-white dark:bg-slate-800 px-5 py-3.5">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Business</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">{app.business_name ?? "—"}</p>
+          </div>
         )}
+        <div className="bg-white dark:bg-slate-800 px-5 py-3.5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+            {app.status}
+          </span>
+        </div>
       </div>
 
       {app.status === "pending" ? (

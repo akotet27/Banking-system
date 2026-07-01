@@ -1,7 +1,10 @@
+import os
+import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -9,7 +12,12 @@ from ..database import get_db
 from ..dependencies.auth import get_current_user, require_role
 from ..models.kyc import KycRequest
 from ..models.user import User
-from ..schemas.kyc import KycRequestOut, KycReviewRequest, KycSubmitRequest
+from ..schemas.kyc import KycRequestOut, KycReviewRequest
+
+UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads" / "kyc"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".webp"}
 
 router = APIRouter(prefix="/kyc", tags=["kyc"])
 
@@ -31,8 +39,9 @@ class KycRequestWithUser(BaseModel):
 
 
 @router.post("/submit", response_model=KycRequestOut)
-def submit_kyc(
-    payload: KycSubmitRequest,
+async def submit_kyc(
+    id_document_ref: str = Form(...),
+    document_file: Optional[UploadFile] = File(None),
     current_user: User = Depends(require_role("customer", "merchant")),
     db: Session = Depends(get_db),
 ):
@@ -44,7 +53,22 @@ def submit_kyc(
     if existing:
         raise HTTPException(status_code=400, detail="A pending KYC request already exists")
 
-    kyc = KycRequest(customer_id=current_user.id, id_document_ref=payload.id_document_ref)
+    saved_filename = None
+    if document_file and document_file.filename:
+        ext = Path(document_file.filename).suffix.lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(status_code=400, detail="File must be JPG, PNG, PDF, or WebP")
+        saved_filename = f"{current_user.id}_{uuid.uuid4().hex}{ext}"
+        content = await document_file.read()
+        if len(content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+        (UPLOAD_DIR / saved_filename).write_bytes(content)
+
+    kyc = KycRequest(
+        customer_id=current_user.id,
+        id_document_ref=id_document_ref,
+        document_file=saved_filename,
+    )
     db.add(kyc)
     db.commit()
     db.refresh(kyc)

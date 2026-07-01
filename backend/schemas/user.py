@@ -95,7 +95,7 @@ class UserUpdate(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    phone_number: str
+    identifier: str  # phone number OR email
     password: str
 
 

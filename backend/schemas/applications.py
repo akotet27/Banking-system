@@ -10,6 +10,12 @@ class AgentApplicationOut(BaseModel):
     reviewed_by: Optional[int]
     reviewed_at: Optional[datetime]
     created_at: datetime
+    # Joined from User
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+    location: Optional[str] = None
+    kyc_status: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -26,6 +32,12 @@ class MerchantApplicationOut(BaseModel):
     reviewed_by: Optional[int]
     reviewed_at: Optional[datetime]
     created_at: datetime
+    # Joined from User
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+    location: Optional[str] = None
+    kyc_status: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

@@ -7,7 +7,7 @@ from ..models.wallet import Wallet
 from ..schemas.otp import OtpResendRequest, OtpVerifyRequest
 from ..schemas.user import ForgotPasswordRequest, LoginRequest, ResetPasswordRequest, TokenResponse, UserCreate, UserOut
 from ..services.auth_service import create_access_token, hash_password, verify_password
-from ..services.otp_service import create_otp, send_otp_email, verify_otp
+from ..services.otp_service import create_otp, send_login_notification, send_otp_email, verify_otp
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -100,15 +100,25 @@ def resend_otp(payload: OtpResendRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.phone_number == payload.phone_number).first()
+    identifier = payload.identifier.strip()
+    if "@" in identifier:
+        user = db.query(User).filter(User.email == identifier).first()
+    else:
+        phone = identifier if identifier.startswith("+") else "+250" + identifier.lstrip("0")
+        user = db.query(User).filter(User.phone_number == phone).first()
+
     if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid phone number or password")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     if not user.email_verified:
         raise HTTPException(status_code=403, detail="Email not verified")
     if user.is_frozen:
         raise HTTPException(status_code=403, detail="Account is frozen")
 
     token = create_access_token({"sub": str(user.id), "role": user.role})
+    try:
+        send_login_notification(user.email, user.full_name or user.phone_number)
+    except Exception:
+        pass
     return TokenResponse(access_token=token, user=UserOut.model_validate(user))
 
 

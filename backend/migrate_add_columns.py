@@ -1,5 +1,5 @@
 """
-Adds the three new columns to the existing users table without data loss.
+Adds new columns to existing tables without data loss.
 
 Run from Banking-system/ directory:
     .venv/Scripts/python -m backend.migrate_add_columns
@@ -8,8 +8,7 @@ Run from Banking-system/ directory:
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "ishimwe_bank.db")
-DB_PATH = os.path.abspath(DB_PATH)
+DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ishimwe_bank.db"))
 
 
 def column_exists(cursor, table, column):
@@ -23,18 +22,22 @@ def main():
     cur = conn.cursor()
 
     added = []
-    for col, definition in [
-        ("full_name",     "TEXT"),
-        ("date_of_birth", "TEXT"),
-        ("location",      "TEXT"),
-        ("access_code",   "TEXT"),
-    ]:
-        if not column_exists(cur, "users", col):
-            cur.execute(f"ALTER TABLE users ADD COLUMN {col} {definition}")
-            added.append(col)
-            print(f"  Added column: {col}")
+
+    migrations = [
+        ("users",        "full_name",     "TEXT"),
+        ("users",        "date_of_birth", "TEXT"),
+        ("users",        "location",      "TEXT"),
+        ("users",        "access_code",   "TEXT"),
+        ("kyc_requests", "document_file", "TEXT"),
+    ]
+
+    for table, col, definition in migrations:
+        if not column_exists(cur, table, col):
+            cur.execute(f"ALTER TABLE {table} ADD COLUMN {col} {definition}")
+            added.append(f"{table}.{col}")
+            print(f"  Added: {table}.{col}")
         else:
-            print(f"  Already exists: {col}")
+            print(f"  Already exists: {table}.{col}")
 
     conn.commit()
     conn.close()

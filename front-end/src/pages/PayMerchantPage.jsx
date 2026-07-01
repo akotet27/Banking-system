@@ -60,8 +60,7 @@ export default function PayMerchantPage() {
     getContacts(token).then(setContacts).catch(() => {});
   }, [token]);
 
-  // Only show merchant contacts
-  const merchantContacts = contacts; // backend doesn't distinguish by role; all are valid suggestions
+  const merchantContacts = contacts.filter(c => c.role === "merchant");
 
   function selectContact(contact) {
     const local = contact.phone_number.replace(/^\+250/, "");

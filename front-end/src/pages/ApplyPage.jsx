@@ -95,6 +95,9 @@ export default function ApplyPage() {
     }
   }
 
+  const agentBlocked    = agentApp   && agentApp.status   !== "rejected";
+  const merchantBlocked = merchantApp && merchantApp.status !== "rejected";
+
   return (
     <SidebarLayout>
       <div className="w-full min-h-full px-4 py-5 md:px-8 md:py-7 bg-slate-50 dark:bg-slate-900">
@@ -117,7 +120,12 @@ export default function ApplyPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl">
 
             {/* ── Agent card ── */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+            <div className={`bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden ${merchantBlocked ? "opacity-40 pointer-events-none" : ""}`}>
+              {merchantBlocked && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700 px-5 py-2 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  You have a merchant application — you can only hold one role.
+                </div>
+              )}
               <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -182,7 +190,12 @@ export default function ApplyPage() {
             </div>
 
             {/* ── Merchant card ── */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+            <div className={`bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden ${agentBlocked ? "opacity-40 pointer-events-none" : ""}`}>
+              {agentBlocked && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700 px-5 py-2 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  You have an agent application — you can only hold one role.
+                </div>
+              )}
               <div className="bg-gradient-to-r from-orange-500 to-orange-400 px-5 py-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">

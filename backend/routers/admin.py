@@ -38,12 +38,26 @@ class UserUpdate(BaseModel):
 
 # ── Agent applications ──────────────────────────────────────────────────────
 
+def _enrich_app(app, db: Session):
+    """Attach user fields to an application dict for the admin view."""
+    user = db.query(User).filter(User.id == app.user_id).first()
+    data = {c.key: getattr(app, c.key) for c in app.__table__.columns}
+    if user:
+        data["full_name"]    = user.full_name
+        data["phone_number"] = user.phone_number
+        data["email"]        = user.email
+        data["location"]     = user.location
+        data["kyc_status"]   = user.kyc_status
+    return data
+
+
 @router.get("/applications/agents", response_model=list[AgentApplicationOut])
 def list_agent_apps(
     current_user: User = Depends(require_role("admin")),
     db: Session = Depends(get_db),
 ):
-    return db.query(AgentApplication).order_by(AgentApplication.created_at.desc()).all()
+    apps = db.query(AgentApplication).order_by(AgentApplication.created_at.desc()).all()
+    return [_enrich_app(a, db) for a in apps]
 
 
 @router.post("/applications/agents/review")
@@ -84,7 +98,8 @@ def list_merchant_apps(
     current_user: User = Depends(require_role("admin")),
     db: Session = Depends(get_db),
 ):
-    return db.query(MerchantApplication).order_by(MerchantApplication.created_at.desc()).all()
+    apps = db.query(MerchantApplication).order_by(MerchantApplication.created_at.desc()).all()
+    return [_enrich_app(a, db) for a in apps]
 
 
 @router.post("/applications/merchants/review")

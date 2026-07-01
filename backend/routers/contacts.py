@@ -22,6 +22,7 @@ class ContactOut(BaseModel):
     full_name: Optional[str]
     phone_number: str
     label: Optional[str]
+    role: str
 
     model_config = {"from_attributes": True}
 
@@ -47,6 +48,7 @@ def list_contacts(
                 full_name=u.full_name,
                 phone_number=u.phone_number,
                 label=c.label,
+                role=u.role,
             ))
     return result
 
@@ -78,6 +80,7 @@ def save_contact(
             full_name=contact_user.full_name,
             phone_number=contact_user.phone_number,
             label=existing.label,
+            role=contact_user.role,
         )
 
     contact = Contact(
@@ -94,6 +97,7 @@ def save_contact(
         full_name=contact_user.full_name,
         phone_number=contact_user.phone_number,
         label=contact.label,
+        role=contact_user.role,
     )
 
 
