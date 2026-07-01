@@ -38,16 +38,13 @@ const STEPS = [
 ];
 
 
-const RW_DISTRICTS = [
-  "Kigali - Gasabo", "Kigali - Kicukiro", "Kigali - Nyarugenge",
-  "Eastern - Bugesera", "Eastern - Gatsibo", "Eastern - Kayonza", "Eastern - Kirehe",
-  "Eastern - Ngoma", "Eastern - Nyagatare", "Eastern - Rwamagana",
-  "Northern - Burera", "Northern - Gakenke", "Northern - Gicumbi", "Northern - Musanze", "Northern - Rulindo",
-  "Southern - Gisagara", "Southern - Huye", "Southern - Kamonyi", "Southern - Muhanga",
-  "Southern - Nyamagabe", "Southern - Nyanza", "Southern - Nyaruguru", "Southern - Ruhango",
-  "Western - Karongi", "Western - Ngororero", "Western - Nyabihu", "Western - Nyamasheke",
-  "Western - Rubavu", "Western - Rusizi", "Western - Rutsiro",
-];
+const RW_DISTRICTS = {
+  "Kigali":   ["Gasabo", "Kicukiro", "Nyarugenge"],
+  "Eastern":  ["Bugesera", "Gatsibo", "Kayonza", "Kirehe", "Ngoma", "Nyagatare", "Rwamagana"],
+  "Northern": ["Burera", "Gakenke", "Gicumbi", "Musanze", "Rulindo"],
+  "Southern": ["Gisagara", "Huye", "Kamonyi", "Muhanga", "Nyamagabe", "Nyanza", "Nyaruguru", "Ruhango"],
+  "Western":  ["Karongi", "Ngororero", "Nyabihu", "Nyamasheke", "Rubavu", "Rusizi", "Rutsiro"],
+};
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -391,7 +388,11 @@ export default function RegisterPage() {
                   <select value={location} onChange={(e) => setLocation(e.target.value)}
                     className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-400">
                     <option value="">Select…</option>
-                    {RW_DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                    {Object.entries(RW_DISTRICTS).map(([province, districts]) => (
+                      <optgroup key={province} label={province === "Kigali" ? "Kigali City" : `${province} Province`}>
+                        {districts.map(d => <option key={d} value={`${province} - ${d}`}>{d}</option>)}
+                      </optgroup>
+                    ))}
                   </select>
                   <FErr k="location" />
                 </div>
