@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { getBalance, getTransactions, floatTopup, getFloatRequests } from "../api/walletApi";
 import { formatCurrency } from "../utils/validation";
 import { InboxArrowDownIcon, BankNoteIcon, ArrowUpIcon, ArrowDownIcon, XIcon } from "../components/Icons";
+import AccessCodeCard from "../components/AccessCodeCard";
 
 export default function AgentDashboardPage() {
   const { user, token } = useAuth();
@@ -304,7 +305,10 @@ export default function AgentDashboardPage() {
               )}
             </div>
 
-            {/* Float request history */}
+            {/* Agent code + QR */}
+            <AccessCodeCard user={user} />
+
+          {/* Float request history */}
             {floatRequests.length > 0 && (
               <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-5">
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-3">Top-up history</h3>

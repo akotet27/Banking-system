@@ -18,13 +18,11 @@ class UserCreate(BaseModel):
     def validate_email_deliverable(cls, v: str) -> str:
         try:
             from email_validator import validate_email as _ve, EmailNotValidError
-            _ve(v, check_deliverability=True)
+            _ve(v, check_deliverability=False)
         except Exception as exc:
-            # Only reject if it's a deliverability error, not a DNS timeout
             name = type(exc).__name__
-            if "EmailNotValidError" in name or "EmailUndeliverableError" in name:
+            if "EmailNotValidError" in name:
                 raise ValueError(str(exc))
-            # DNS timeout or network error — allow through and rely on OTP verification
         return v
 
     @field_validator("phone_number")
@@ -34,19 +32,35 @@ class UserCreate(BaseModel):
             raise ValueError("Phone must be E.164 format, e.g. +250788123456")
         return v
 
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("Password must contain at least one number")
+        if not re.search(r"[^A-Za-z0-9]", v):
+            raise ValueError("Password must contain at least one special character")
+        return v
+
     @field_validator("role")
     @classmethod
     def validate_role(cls, v: str) -> str:
-        if v not in ("customer", "agent"):
-            raise ValueError("Role must be customer or agent — merchant status is granted by an admin")
+        if v not in ("customer",):
+            raise ValueError("Role must be customer — agent and merchant status is applied for after registration")
         return v
 
     @field_validator("full_name")
     @classmethod
     def validate_full_name(cls, v: str) -> str:
-        if len(v.strip()) < 3:
+        name = v.strip()
+        if len(name) < 3:
             raise ValueError("Full name must be at least 3 characters")
-        return v.strip()
+        if not re.match(r"^[A-Za-zÀ-ÖØ-öø-ÿ '\-]+$", name):
+            raise ValueError("Full name must contain only letters")
+        return name
 
     @field_validator("date_of_birth")
     @classmethod
@@ -68,6 +82,7 @@ class UserOut(BaseModel):
     email_verified: bool
     kyc_status: str
     is_frozen: bool
+    access_code: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

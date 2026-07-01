@@ -15,7 +15,10 @@ async function request(path, options = {}) {
   }
   const data = await res.json();
   if (!res.ok) {
-    const err = typeof data === "object" ? { ...data } : { detail: "Request failed" };
+    const err = typeof data === "object" && data !== null ? { ...data } : { detail: "Request failed" };
+    if (Array.isArray(err.detail)) {
+      err.detail = err.detail.map((e) => e.msg || String(e)).join("; ");
+    }
     err._status = res.status;
     throw err;
   }

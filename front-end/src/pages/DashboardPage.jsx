@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { getBalance, getTransactions } from "../api/walletApi";
 import { getPendingSessions, declineSession } from "../api/sessionApi";
 import BiometricPrompt from "../components/BiometricPrompt";
+import AccessCodeCard from "../components/AccessCodeCard";
 import { formatCurrency } from "../utils/validation";
 import { API_BASE } from "../api/base.js";
 import {
@@ -264,6 +265,13 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Merchant code + QR — only for merchant role */}
+        {user?.role === "merchant" && (
+          <div className="max-w-sm">
+            <AccessCodeCard user={user} />
+          </div>
+        )}
       </div>
 
       {/* Biometric approval modal */}

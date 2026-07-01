@@ -27,6 +27,7 @@ def main():
         ("full_name",     "TEXT"),
         ("date_of_birth", "TEXT"),
         ("location",      "TEXT"),
+        ("access_code",   "TEXT"),
     ]:
         if not column_exists(cur, "users", col):
             cur.execute(f"ALTER TABLE users ADD COLUMN {col} {definition}")

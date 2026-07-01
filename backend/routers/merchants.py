@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..dependencies.auth import require_role
+from ..dependencies.auth import get_current_user, require_role
 from ..models.applications import MerchantApplication
 from ..models.user import User
 from ..schemas.applications import MerchantApplicationCreate, MerchantApplicationOut
@@ -31,4 +31,20 @@ def apply_as_merchant(
     db.add(app)
     db.commit()
     db.refresh(app)
+    return app
+
+
+@router.get("/my-application", response_model=MerchantApplicationOut)
+def my_merchant_application(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(MerchantApplication)
+        .filter(MerchantApplication.user_id == current_user.id)
+        .order_by(MerchantApplication.created_at.desc())
+        .first()
+    )
+    if not app:
+        raise HTTPException(status_code=404, detail="No merchant application found")
     return app

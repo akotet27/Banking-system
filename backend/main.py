@@ -14,6 +14,7 @@ from .models import (  # noqa: F401
     AgentApplication,
     AgentSession,
     BiometricCredential,
+    Contact,
     FeeRule,
     FloatRequest,
     KycRequest,
@@ -31,6 +32,7 @@ from .routers import (
     biometric,
     cash_in,
     cash_out,
+    contacts,
     kyc,
     merchants,
     pay_merchant,
@@ -82,6 +84,7 @@ app.include_router(cash_out.router)
 app.include_router(send_money.router)
 app.include_router(pay_merchant.router)
 app.include_router(sessions.router)
+app.include_router(contacts.router)
 app.include_router(admin.router)
 
 

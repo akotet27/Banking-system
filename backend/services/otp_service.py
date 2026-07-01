@@ -70,10 +70,8 @@ def send_otp_email(email: str, code: str, purpose: str) -> None:
         "If you did not request this, ignore this email."
     )
 
-    # Always print to console so the code is visible during development
-    print(f"\n{'='*50}\n[OTP] To: {email} | Purpose: {purpose} | Code: {code}\n{'='*50}\n", flush=True)
-
     if not settings.smtp_user:
+        logger.warning("[OTP] SMTP not configured — code not delivered to %s (purpose: %s)", email, purpose)
         return
 
     msg = MIMEText(body)
@@ -88,6 +86,7 @@ def send_otp_email(email: str, code: str, purpose: str) -> None:
             server.ehlo()
             server.login(settings.smtp_user, settings.smtp_password)
             server.send_message(msg)
-        print(f"[OTP] Email delivered to {email} OK", flush=True)
+        logger.info("[OTP] Email delivered to %s (purpose: %s)", email, purpose)
     except Exception as exc:
-        print(f"[OTP] SMTP failed ({type(exc).__name__}: {exc}) - use the code above from console", flush=True)
+        logger.error("[OTP] SMTP failed for %s (%s: %s)", email, type(exc).__name__, exc)
+        raise

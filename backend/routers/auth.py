@@ -64,7 +64,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     try:
         send_otp_email(user.email, code, "signup")
     except Exception:
-        pass  # dev mode already printed; don't fail the registration
+        pass  # OTP stored in DB; SMTP failure logged by otp_service
 
     return user
 

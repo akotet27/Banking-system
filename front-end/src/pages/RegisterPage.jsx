@@ -37,10 +37,6 @@ const STEPS = [
   { n: 3, label: "Set up your fingerprint", sub: "Secures every send and cash out from here on." },
 ];
 
-const ROLES = [
-  { value: "customer", label: "Customer", desc: "Send money, pay merchants, cash out" },
-  { value: "agent",    label: "Agent",    desc: "Process cash in and cash out for customers" },
-];
 
 const RW_DISTRICTS = [
   "Kigali - Gasabo", "Kigali - Kicukiro", "Kigali - Nyarugenge",
@@ -60,7 +56,6 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [dob, setDob] = useState("");
   const [location, setLocation] = useState("");
-  const [role, setRole] = useState("customer");
   const [agreed, setAgreed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -74,8 +69,11 @@ export default function RegisterPage() {
 
   function validateStep1() {
     const errs = {};
+    const namePattern = /^[A-Za-zÀ-ÖØ-öø-ÿ '-]+$/;
     if (firstName.trim().length < 2) errs.firstName = "Enter your first name";
+    else if (!namePattern.test(firstName.trim())) errs.firstName = "Name must contain only letters";
     if (lastName.trim().length < 2)  errs.lastName  = "Enter your last name";
+    else if (!namePattern.test(lastName.trim()))  errs.lastName  = "Name must contain only letters";
     const digits = phoneLocal.replace(/\D/g, "");
     if (digits.length < 9)           errs.phone    = "Enter a valid Rwandan phone number";
     const ee = validateEmail(email);
@@ -103,7 +101,7 @@ export default function RegisterPage() {
         phone_number: fullPhone,
         email,
         password,
-        role,
+        role: "customer",
         full_name: fullName,
         date_of_birth: dob,
         location,
@@ -393,21 +391,6 @@ export default function RegisterPage() {
                     {RW_DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
                   <FErr k="location" />
-                </div>
-              </div>
-
-              {/* Account type */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Account Type</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {ROLES.map((r) => (
-                    <label key={r.value} className={`flex flex-col p-3 rounded-xl border cursor-pointer transition-all ${role === r.value ? "border-orange-400 bg-orange-50 dark:bg-orange-900/20" : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"}`}>
-                      <input type="radio" name="role" value={r.value} checked={role === r.value}
-                        onChange={() => setRole(r.value)} className="sr-only" />
-                      <span className="font-semibold text-sm text-slate-900 dark:text-white">{r.label}</span>
-                      <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 leading-tight">{r.desc}</span>
-                    </label>
-                  ))}
                 </div>
               </div>
 

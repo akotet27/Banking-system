@@ -30,6 +30,10 @@ const STATUS_BADGE = {
   failed:    "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
 };
 
+function refNum(id) {
+  return `ISH-${new Date().getFullYear()}-${String(id).padStart(6, "0")}`;
+}
+
 function getTxType(t, userId) {
   const raw = t.type === "send_money" ? "send" : t.type;
   if (raw === "send") return t.initiator_id === userId ? "send" : "receive";
@@ -87,23 +91,167 @@ function Pagination({ page, totalPages, total, pageSize, onPrev, onNext }) {
         {from}–{to} of {total} transactions · page {page + 1} of {totalPages}
       </span>
       <div className="flex gap-2">
-        <button
-          onClick={onPrev}
-          disabled={page === 0}
-          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
+        <button onClick={onPrev} disabled={page === 0}
+          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
           ← Prev
         </button>
-        <button
-          onClick={onNext}
-          disabled={page >= totalPages - 1}
-          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
+        <button onClick={onNext} disabled={page >= totalPages - 1}
+          className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
           Next →
         </button>
       </div>
     </div>
   );
+}
+
+async function exportPDF(transactions, user, filtered) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  const ORANGE  = [249, 115, 22];
+  const DARK    = [11,  29,  62];
+  const WHITE   = [255, 255, 255];
+  const LIGHT   = [248, 250, 252];
+  const GRAY    = [100, 116, 139];
+  const DARKGRAY= [51,  65,  85];
+
+  const W = 210;
+  const now = new Date();
+
+  // ── Header banner ──
+  doc.setFillColor(...DARK);
+  doc.rect(0, 0, W, 35, "F");
+
+  // Logo square
+  doc.setFillColor(...ORANGE);
+  doc.roundedRect(12, 8, 18, 18, 3, 3, "F");
+  doc.setTextColor(...WHITE);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("IB", 21, 20, { align: "center" });
+
+  // Bank name
+  doc.setFontSize(16);
+  doc.text("Ishimwe Bank", 35, 16);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(180, 195, 220);
+  doc.text("Transaction History Statement", 35, 22);
+
+  // Right side — date/account
+  doc.setTextColor(...WHITE);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("Generated:", W - 12, 12, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.text(now.toLocaleDateString("en-RW", { day: "2-digit", month: "long", year: "numeric" }) + "  " + now.toLocaleTimeString("en-RW", { hour: "2-digit", minute: "2-digit" }), W - 12, 17, { align: "right" });
+  doc.setFont("helvetica", "bold");
+  doc.text("Account:", W - 12, 24, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.text(user?.full_name ?? user?.phone_number ?? "—", W - 12, 29, { align: "right" });
+
+  // ── Sub-header ──
+  doc.setFillColor(...LIGHT);
+  doc.rect(0, 35, W, 14, "F");
+  doc.setTextColor(...GRAY);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Phone: ${user?.phone_number ?? "—"}`, 12, 42);
+  doc.text(`Total records: ${filtered.length}`, W / 2, 42, { align: "center" });
+  doc.text(`Role: ${(user?.role ?? "customer").charAt(0).toUpperCase() + (user?.role ?? "customer").slice(1)}`, W - 12, 42, { align: "right" });
+
+  // ── Table header ──
+  let y = 56;
+  doc.setFillColor(...DARK);
+  doc.rect(10, y - 5, W - 20, 8, "F");
+  doc.setTextColor(...WHITE);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  const cols = [12, 42, 75, 110, 148, 175];
+  const headers = ["REF NUMBER", "DATE & TIME", "DESCRIPTION", "TYPE", "AMOUNT (RWF)", "STATUS"];
+  headers.forEach((h, i) => doc.text(h, cols[i], y, { baseline: "middle" }));
+  y += 8;
+
+  // ── Table rows ──
+  doc.setFont("helvetica", "normal");
+  const TYPE_LABELS = { send: "Send Money", receive: "Received", cash_in: "Cash In", cash_out: "Cash Out", pay_merchant: "Payment", send_money: "Send Money" };
+
+  filtered.forEach((t, idx) => {
+    if (y > 270) {
+      doc.addPage();
+      y = 20;
+      // Repeat header on new page
+      doc.setFillColor(...DARK);
+      doc.rect(10, y - 5, W - 20, 8, "F");
+      doc.setTextColor(...WHITE);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      headers.forEach((h, i) => doc.text(h, cols[i], y, { baseline: "middle" }));
+      y += 8;
+      doc.setFont("helvetica", "normal");
+    }
+
+    const bg = idx % 2 === 0 ? WHITE : LIGHT;
+    doc.setFillColor(...bg);
+    doc.rect(10, y - 4, W - 20, 7.5, "F");
+
+    const type    = user?.role === "admin"
+      ? (t.transaction_type ?? t.type ?? "")
+      : getTxType(t, user?.id);
+    const label   = getTxLabel(t, user?.id);
+    const debit   = user?.role !== "admin" && isDebit(t, user?.id);
+    const amtStr  = (debit ? "- " : "+ ") + fmt(parseFloat(t.amount));
+    const ref     = refNum(t.id);
+    const dt      = new Date(t.created_at);
+    const dateStr = fmtDate(t.created_at) + " " + fmtTime(t.created_at);
+
+    doc.setFontSize(7);
+    doc.setTextColor(...DARKGRAY);
+
+    // REF — orange
+    doc.setTextColor(...ORANGE);
+    doc.setFont("helvetica", "bold");
+    doc.text(ref, cols[0], y, { baseline: "middle" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...DARKGRAY);
+    doc.text(dateStr, cols[1], y, { baseline: "middle" });
+    doc.text(doc.splitTextToSize(label, 32)[0], cols[2], y, { baseline: "middle" });
+    doc.text(TYPE_LABELS[type] ?? type, cols[3], y, { baseline: "middle" });
+
+    // Amount coloring
+    if (user?.role !== "admin") {
+      doc.setTextColor(debit ? 239 : 16, debit ? 68 : 185, debit ? 68 : 129);
+    } else {
+      doc.setTextColor(...DARKGRAY);
+    }
+    doc.setFont("helvetica", "bold");
+    doc.text(fmt(parseFloat(t.amount)), cols[4], y, { baseline: "middle" });
+
+    // Status
+    doc.setFont("helvetica", "normal");
+    const sc = t.status === "completed" ? [22, 163, 74] : t.status === "failed" ? [239, 68, 68] : [217, 119, 6];
+    doc.setTextColor(...sc);
+    doc.text((t.status ?? "").charAt(0).toUpperCase() + (t.status ?? "").slice(1), cols[5], y, { baseline: "middle" });
+
+    y += 7.5;
+  });
+
+  // ── Footer ──
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFillColor(...DARK);
+    doc.rect(0, 287, W, 10, "F");
+    doc.setTextColor(180, 195, 220);
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "normal");
+    doc.text("© 2026 Ishimwe Bank — Confidential statement. For account holder use only.", 12, 293);
+    doc.text(`Page ${p} of ${pageCount}`, W - 12, 293, { align: "right" });
+  }
+
+  const filename = `Ishimwe_Bank_Statement_${now.toISOString().slice(0, 10)}.pdf`;
+  doc.save(filename);
 }
 
 export default function HistoryPage() {
@@ -113,6 +261,7 @@ export default function HistoryPage() {
 
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading]           = useState(true);
+  const [exporting, setExporting]       = useState(false);
   const [tab, setTab]                   = useState("All");
   const [search, setSearch]             = useState("");
   const [userMap, setUserMap]           = useState({});
@@ -121,7 +270,6 @@ export default function HistoryPage() {
   const TABS     = isAdmin ? ADMIN_TABS : CUSTOMER_TABS;
   const PAGE_SIZE = isAdmin ? ADMIN_PAGE_SIZE : CUSTOMER_PAGE_SIZE;
 
-  // Reset to first page whenever filter or search changes
   useEffect(() => { setPage(0); }, [tab, search]);
 
   useEffect(() => {
@@ -159,8 +307,9 @@ export default function HistoryPage() {
         const phone = userMap[t.initiator_id] ?? "";
         return (
           phone.includes(q) ||
-          rawType.toLowerCase().includes(q) ||
-          fmt(parseFloat(t.amount)).includes(q)
+          (t.transaction_type ?? t.type ?? "").toLowerCase().includes(q) ||
+          fmt(parseFloat(t.amount)).includes(q) ||
+          refNum(t.id).toLowerCase().includes(q)
         );
       }
       return true;
@@ -176,7 +325,8 @@ export default function HistoryPage() {
       const q = search.toLowerCase();
       return (
         getTxLabel(t, user?.id).toLowerCase().includes(q) ||
-        formatCurrency(t.amount).toLowerCase().includes(q)
+        formatCurrency(t.amount).toLowerCase().includes(q) ||
+        refNum(t.id).toLowerCase().includes(q)
       );
     }
     return true;
@@ -185,6 +335,17 @@ export default function HistoryPage() {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageItems  = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const backTo     = isAdmin ? "/admin" : isAgent ? "/agent" : "/dashboard";
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await exportPDF(transactions, user, filtered);
+    } catch (e) {
+      console.error("PDF export failed", e);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <SidebarLayout>
@@ -195,13 +356,25 @@ export default function HistoryPage() {
         </Link>
 
         {/* Header */}
-        <div className="mb-5">
-          <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white">Transaction history</h1>
-          <p className="text-slate-400 text-sm mt-0.5 hidden sm:block">
-            {isAdmin
-              ? "All transactions across the system."
-              : "Every send, cash in, cash out, and payment — all in one place."}
-          </p>
+        <div className="flex items-start justify-between mb-5 gap-3">
+          <div>
+            <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white">Transaction history</h1>
+            <p className="text-slate-400 text-sm mt-0.5 hidden sm:block">
+              {isAdmin
+                ? "All transactions across the system."
+                : "Every send, cash in, cash out, and payment — all in one place."}
+            </p>
+          </div>
+          <button
+            onClick={handleExport}
+            disabled={exporting || filtered.length === 0}
+            className="flex items-center gap-1.5 bg-[#0B1D3E] hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-bold px-3 py-2 rounded-xl shrink-0 disabled:opacity-40 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            </svg>
+            {exporting ? "Exporting…" : "Export PDF"}
+          </button>
         </div>
 
         {/* Search */}
@@ -211,7 +384,7 @@ export default function HistoryPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search transactions"
+            placeholder="Search by name, reference, or amount"
             className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-800 dark:text-white dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
           />
         </div>
@@ -252,12 +425,12 @@ export default function HistoryPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
+                        <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Reference</th>
                         <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Date</th>
                         <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Time</th>
                         <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Type</th>
                         <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Initiator</th>
                         <th className="text-right text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Amount</th>
-                        <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Fee</th>
                         <th className="text-left text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-5 py-3">Status</th>
                       </tr>
                     </thead>
@@ -269,6 +442,7 @@ export default function HistoryPage() {
                         const phone     = userMap[t.initiator_id] ?? `#${t.initiator_id}`;
                         return (
                           <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                            <td className="px-5 py-3 whitespace-nowrap font-mono text-xs text-orange-500 font-bold">{refNum(t.id)}</td>
                             <td className="px-5 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300 text-xs font-medium">{fmtDate(t.created_at)}</td>
                             <td className="px-5 py-3 whitespace-nowrap text-slate-400 dark:text-slate-500 text-xs">{fmtTime(t.created_at)}</td>
                             <td className="px-5 py-3 whitespace-nowrap">
@@ -278,7 +452,6 @@ export default function HistoryPage() {
                             </td>
                             <td className="px-5 py-3 whitespace-nowrap font-mono text-xs text-slate-700 dark:text-slate-300">{phone}</td>
                             <td className="px-5 py-3 whitespace-nowrap text-right font-bold text-slate-900 dark:text-white">{fmt(parseFloat(t.amount))} <span className="text-slate-400 font-normal">RWF</span></td>
-                            <td className="px-5 py-3 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">{parseFloat(t.fee) > 0 ? fmt(parseFloat(t.fee)) + " RWF" : "—"}</td>
                             <td className="px-5 py-3 whitespace-nowrap">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${statusCls}`}>
                                 {t.status}
@@ -290,11 +463,7 @@ export default function HistoryPage() {
                     </tbody>
                   </table>
                 </div>
-                <Pagination
-                  page={page}
-                  totalPages={totalPages}
-                  total={filtered.length}
-                  pageSize={PAGE_SIZE}
+                <Pagination page={page} totalPages={totalPages} total={filtered.length} pageSize={PAGE_SIZE}
                   onPrev={() => setPage(p => Math.max(0, p - 1))}
                   onNext={() => setPage(p => Math.min(totalPages - 1, p + 1))}
                 />
@@ -334,7 +503,7 @@ export default function HistoryPage() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{getTxLabel(t, user?.id)}</p>
                             <p className="text-xs text-slate-400">{dateStr} · {timeStr}</p>
-                            <p className="text-[10px] text-slate-300 dark:text-slate-600 font-mono">#{t.id}</p>
+                            <p className="text-[10px] text-orange-400 dark:text-orange-500 font-mono font-bold">{refNum(t.id)}</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className={`text-sm font-bold ${debit ? "text-red-500" : "text-emerald-600"}`}>
@@ -347,11 +516,7 @@ export default function HistoryPage() {
                     })}
                   </div>
                 ))}
-                <Pagination
-                  page={page}
-                  totalPages={totalPages}
-                  total={filtered.length}
-                  pageSize={PAGE_SIZE}
+                <Pagination page={page} totalPages={totalPages} total={filtered.length} pageSize={PAGE_SIZE}
                   onPrev={() => setPage(p => Math.max(0, p - 1))}
                   onNext={() => setPage(p => Math.min(totalPages - 1, p + 1))}
                 />

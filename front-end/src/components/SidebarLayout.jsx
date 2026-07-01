@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { LogoMark } from "./Logo";
+import BottomNav from "./BottomNav";
 import {
   GridIcon, SendIcon, ArrowDownIcon, StoreIcon, ListIcon, UserIcon,
   InboxArrowDownIcon, BankNoteIcon, ClockIcon, CreditCardIcon, LogOutIcon,
@@ -23,6 +24,7 @@ const CUSTOMER_NAV = [
   { label: "Pay merchant", to: "/pay",       Icon: StoreIcon },
   { label: "History",      to: "/history",   Icon: ListIcon },
   { label: "Profile",      to: "/profile",   Icon: UserIcon },
+  { label: "Become agent / merchant", to: "/apply", Icon: ArrowDownIcon },
 ];
 
 const AGENT_NAV = [
@@ -176,10 +178,12 @@ export default function SidebarLayout({ children, pendingCount = 0 }) {
           </div>
         </div>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
           {children}
         </main>
       </div>
+
+      <BottomNav />
     </div>
   );
 }

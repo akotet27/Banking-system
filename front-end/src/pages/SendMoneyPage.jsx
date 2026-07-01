@@ -4,24 +4,51 @@ import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { sendMoney } from "../api/transactionApi";
 import { login } from "../api/authApi";
+import { getContacts, saveContact } from "../api/contactsApi";
 import { formatCurrency, validatePhone } from "../utils/validation";
 import { CheckCircleIcon, RwandaFlagIcon, LockIcon, EyeIcon, EyeOffIcon } from "../components/Icons";
+import { API_BASE } from "../api/base.js";
+
+function ContactChip({ contact, onSelect }) {
+  const initials = contact.full_name
+    ? contact.full_name.trim().split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase()
+    : "?";
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(contact)}
+      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all shrink-0"
+    >
+      <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center shrink-0">
+        <span className="text-white text-[9px] font-bold">{initials}</span>
+      </div>
+      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+        {contact.label ?? contact.full_name ?? contact.phone_number}
+      </span>
+    </button>
+  );
+}
 
 export default function SendMoneyPage() {
   const { user, token } = useAuth();
   const navigate = useNavigate();
+
   const [phoneLocal, setPhoneLocal] = useState("");
   const [amount, setAmount] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [recipient, setRecipient] = useState(null);   // null | { full_name, phone_number } | "not_found"
+  const [recipient, setRecipient] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [confirmError, setConfirmError] = useState(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+
+  const [contacts, setContacts] = useState([]);
+  const [savingContact, setSavingContact] = useState(false);
+  const [contactSaved, setContactSaved] = useState(false);
 
   const digits = phoneLocal.replace(/\D/g, "");
   const fullPhone = phoneLocal.startsWith("+") ? phoneLocal : "+250" + digits;
@@ -31,18 +58,24 @@ export default function SendMoneyPage() {
   const ready = digits.length >= 9 && parsedAmt >= 1 && recipient && recipient !== "not_found";
 
   useEffect(() => {
-    if (digits.length < 9) { setRecipient(null); return; }
+    getContacts(token).then(setContacts).catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    if (digits.length < 9) { setRecipient(null); setContactSaved(false); return; }
     setLookupLoading(true);
     setRecipient(null);
+    setContactSaved(false);
     const id = setTimeout(async () => {
       try {
         const res = await fetch(
-          `http://localhost:8000/users/lookup?phone=${encodeURIComponent(fullPhone)}`,
+          `${API_BASE}/users/lookup?phone=${encodeURIComponent(fullPhone)}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (res.ok) {
           const data = await res.json();
           setRecipient(data);
+          setContactSaved(contacts.some(c => c.phone_number === data.phone_number));
         } else {
           setRecipient("not_found");
         }
@@ -54,6 +87,25 @@ export default function SendMoneyPage() {
     }, 500);
     return () => clearTimeout(id);
   }, [fullPhone, token, digits.length]);
+
+  function selectContact(contact) {
+    const local = contact.phone_number.replace(/^\+250/, "");
+    setPhoneLocal(local);
+  }
+
+  async function handleSaveContact() {
+    if (!recipient || recipient === "not_found") return;
+    setSavingContact(true);
+    try {
+      await saveContact(token, recipient.phone_number);
+      setContacts(await getContacts(token));
+      setContactSaved(true);
+    } catch {
+      // silently ignore duplicate
+    } finally {
+      setSavingContact(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -99,7 +151,7 @@ export default function SendMoneyPage() {
           </div>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Transfer Sent!</h2>
           <p className="text-4xl font-black text-slate-900 dark:text-white mt-3">{formatCurrency(success.amount)}</p>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">sent to {fullPhone}</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">sent to {recipient?.full_name ?? fullPhone}</p>
           {success.fee > 0 && <p className="text-xs text-slate-400 mt-1">Fee: {formatCurrency(success.fee)}</p>}
           <div className="flex flex-col gap-2 mt-8 w-full max-w-xs">
             <button onClick={() => navigate("/dashboard")}
@@ -130,6 +182,18 @@ export default function SendMoneyPage() {
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded-xl px-4 py-3">{error}</div>
           )}
 
+          {/* Frequent contacts */}
+          {contacts.length > 0 && (
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Frequent contacts</p>
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                {contacts.map(c => (
+                  <ContactChip key={c.id} contact={c} onSelect={selectContact} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Recipient */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-5">
             <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
@@ -155,7 +219,6 @@ export default function SendMoneyPage() {
               )}
             </div>
 
-            {/* Recipient name feedback */}
             {digits.length >= 9 && (
               <div className="mt-3">
                 {lookupLoading ? (
@@ -175,11 +238,22 @@ export default function SendMoneyPage() {
                         {recipient.full_name ? recipient.full_name.trim().split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase() : "?"}
                       </span>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{recipient.full_name ?? "—"}</p>
                       <p className="text-xs text-emerald-600 dark:text-emerald-500">{recipient.phone_number}</p>
                     </div>
-                    <CheckCircleIcon className="w-5 h-5 text-emerald-500 ml-auto shrink-0" />
+                    {contactSaved ? (
+                      <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Saved</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleSaveContact}
+                        disabled={savingContact}
+                        className="text-xs font-bold text-orange-500 hover:text-orange-600 disabled:opacity-50 shrink-0"
+                      >
+                        {savingContact ? "Saving…" : "+ Save"}
+                      </button>
+                    )}
                   </div>
                 ) : null}
               </div>

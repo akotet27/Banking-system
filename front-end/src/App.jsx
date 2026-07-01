@@ -21,6 +21,7 @@ import AdminAuditLogPage from "./pages/AdminAuditLogPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import KycPage from "./pages/KycPage";
 import LandingPage from "./pages/LandingPage";
+import ApplyPage from "./pages/ApplyPage";
 
 function Spinner() {
   return (
@@ -78,6 +79,7 @@ function RoleHome() {
 }
 
 const customer = ["customer", "merchant"];
+const customerOnly = ["customer"];
 const agent    = ["agent"];
 const admin    = ["admin"];
 
@@ -103,6 +105,7 @@ export default function App() {
             <Route path="/history"   element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
             <Route path="/profile"   element={<ProtectedRoute roles={customer}><ProfilePage /></ProtectedRoute>} />
             <Route path="/kyc"       element={<ProtectedRoute roles={customer}><KycPage /></ProtectedRoute>} />
+            <Route path="/apply"     element={<ProtectedRoute roles={customerOnly}><ApplyPage /></ProtectedRoute>} />
 
             {/* Agent */}
             <Route path="/agent"      element={<ProtectedRoute roles={agent}><AgentDashboardPage /></ProtectedRoute>} />

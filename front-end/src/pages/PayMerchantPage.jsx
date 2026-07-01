@@ -1,17 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { payMerchant } from "../api/transactionApi";
 import { login } from "../api/authApi";
+import { getContacts, saveContact } from "../api/contactsApi";
 import { formatCurrency } from "../utils/validation";
 import { CheckCircleIcon, QrCodeIcon, StoreIcon, RwandaFlagIcon, EyeIcon, EyeOffIcon, LockIcon } from "../components/Icons";
+import { API_BASE } from "../api/base.js";
 
 const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
+
+function MerchantChip({ contact, onSelect }) {
+  const initials = contact.full_name
+    ? contact.full_name.trim().split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase()
+    : "?";
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(contact)}
+      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all shrink-0"
+    >
+      <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center shrink-0">
+        <span className="text-white text-[9px] font-bold">{initials}</span>
+      </div>
+      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+        {contact.label ?? contact.full_name ?? contact.phone_number}
+      </span>
+    </button>
+  );
+}
 
 export default function PayMerchantPage() {
   const { token, user } = useAuth();
   const navigate = useNavigate();
+
   const [merchantPhone, setMerchantPhone] = useState("");
   const [foundMerchant, setFoundMerchant] = useState(null);
   const [lookingUp, setLookingUp] = useState(false);
@@ -20,15 +43,32 @@ export default function PayMerchantPage() {
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Confirmation step
   const [confirming, setConfirming] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [confirmError, setConfirmError] = useState(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
 
+  const [contacts, setContacts] = useState([]);
+  const [savingContact, setSavingContact] = useState(false);
+  const [contactSaved, setContactSaved] = useState(false);
+
   const parsedAmt = parseFloat(amount) || 0;
   const fullPhone = merchantPhone.startsWith("+") ? merchantPhone : "+250" + merchantPhone.replace(/\D/g, "");
+
+  useEffect(() => {
+    getContacts(token).then(setContacts).catch(() => {});
+  }, [token]);
+
+  // Only show merchant contacts
+  const merchantContacts = contacts; // backend doesn't distinguish by role; all are valid suggestions
+
+  function selectContact(contact) {
+    const local = contact.phone_number.replace(/^\+250/, "");
+    setMerchantPhone(local);
+    setFoundMerchant(null);
+    setContactSaved(true);
+  }
 
   async function handleLookup() {
     if (merchantPhone.replace(/\D/g, "").length < 9) {
@@ -37,19 +77,35 @@ export default function PayMerchantPage() {
     }
     setError(null);
     setLookingUp(true);
+    setContactSaved(false);
     try {
-      const res = await fetch(`http://localhost:8000/users/lookup?phone=${encodeURIComponent(fullPhone)}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("ib_token")}` },
+      const res = await fetch(`${API_BASE}/users/lookup?phone=${encodeURIComponent(fullPhone)}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("not found");
       const data = await res.json();
       if (data.role !== "merchant") throw new Error("not a merchant");
       setFoundMerchant(data);
+      setContactSaved(contacts.some(c => c.phone_number === data.phone_number));
     } catch {
       setFoundMerchant({ name: null, notFound: true });
       setError("No merchant found for that number. Make sure they are registered as a merchant.");
     } finally {
       setLookingUp(false);
+    }
+  }
+
+  async function handleSaveContact() {
+    if (!foundMerchant || foundMerchant.notFound) return;
+    setSavingContact(true);
+    try {
+      await saveContact(token, foundMerchant.phone_number);
+      setContacts(await getContacts(token));
+      setContactSaved(true);
+    } catch {
+      // silently ignore
+    } finally {
+      setSavingContact(false);
     }
   }
 
@@ -68,14 +124,12 @@ export default function PayMerchantPage() {
     setConfirmError(null);
     setConfirmLoading(true);
     try {
-      // Verify password by calling login
       await login(user.phone_number, confirmPassword);
     } catch {
       setConfirmError("Incorrect password. Please try again.");
       setConfirmLoading(false);
       return;
     }
-    // Password correct — execute payment
     try {
       const txn = await payMerchant(token, { merchant_phone: fullPhone, amount: parsedAmt });
       setConfirming(false);
@@ -125,6 +179,18 @@ export default function PayMerchantPage() {
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded-xl px-4 py-3 mb-4">{error}</div>
         )}
 
+        {/* Frequent merchant contacts */}
+        {merchantContacts.length > 0 && (
+          <div className="mb-4">
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Recent merchants</p>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {merchantContacts.map(c => (
+                <MerchantChip key={c.id} contact={c} onSelect={selectContact} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Merchant lookup */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-5 mb-4">
           {/* QR placeholder */}
@@ -133,12 +199,12 @@ export default function PayMerchantPage() {
               <QrCodeIcon className="w-8 h-8 text-orange-400" />
             </div>
             <p className="text-sm text-slate-400 dark:text-slate-500">Point your camera at the merchant&apos;s till QR code</p>
-            <p className="text-xs text-slate-300 dark:text-slate-600">- QR scanning available in mobile app -</p>
+            <p className="text-xs text-slate-300 dark:text-slate-600">— QR scanning available in mobile app —</p>
           </div>
 
           <div className="flex items-center gap-3 mb-5">
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-            <span className="text-xs text-slate-400 font-medium">or</span>
+            <span className="text-xs text-slate-400 font-medium">or enter manually</span>
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
           </div>
 
@@ -151,7 +217,7 @@ export default function PayMerchantPage() {
               </div>
               <input
                 type="tel" value={merchantPhone}
-                onChange={(e) => { setMerchantPhone(e.target.value); setFoundMerchant(null); }}
+                onChange={(e) => { setMerchantPhone(e.target.value); setFoundMerchant(null); setContactSaved(false); }}
                 onKeyDown={e => e.key === "Enter" && handleLookup()}
                 placeholder="Merchant phone number"
                 className="flex-1 px-3 py-3 text-sm outline-none bg-white dark:bg-slate-800 dark:text-white"
@@ -175,8 +241,22 @@ export default function PayMerchantPage() {
                 <p className="text-sm font-bold text-slate-900 dark:text-white">{foundMerchant.full_name ?? fullPhone}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">{fullPhone}</p>
               </div>
-              <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-                <CheckCircleIcon className="w-4 h-4" /> Verified
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                  <CheckCircleIcon className="w-4 h-4" /> Verified
+                </div>
+                {contactSaved ? (
+                  <span className="text-[10px] text-slate-400 font-medium">Saved</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSaveContact}
+                    disabled={savingContact}
+                    className="text-[10px] font-bold text-orange-500 hover:text-orange-600 disabled:opacity-50"
+                  >
+                    {savingContact ? "Saving…" : "+ Save"}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -219,7 +299,7 @@ export default function PayMerchantPage() {
             </div>
             <div className="flex justify-between text-sm mb-4">
               <span className="text-slate-500 dark:text-slate-400">Your fee</span>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">0.00 RWF - Free for you</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">0.00 RWF — Free</span>
             </div>
             <button
               type="button" onClick={handlePay} disabled={loading}
@@ -235,7 +315,6 @@ export default function PayMerchantPage() {
       {confirming && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 p-6">
-            {/* Header */}
             <div className="flex items-center gap-3 mb-5">
               <div className="w-11 h-11 bg-orange-100 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center shrink-0">
                 <LockIcon className="w-5 h-5 text-orange-500" />
@@ -246,11 +325,10 @@ export default function PayMerchantPage() {
               </div>
             </div>
 
-            {/* Payment summary */}
             <div className="bg-slate-50 dark:bg-slate-700/50 rounded-2xl p-4 mb-5 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500 dark:text-slate-400">To</span>
-                <span className="font-semibold text-slate-900 dark:text-white">{foundMerchant.full_name ?? fullPhone}</span>
+                <span className="font-semibold text-slate-900 dark:text-white">{foundMerchant?.full_name ?? fullPhone}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500 dark:text-slate-400">Amount</span>
@@ -273,41 +351,32 @@ export default function PayMerchantPage() {
             )}
 
             <form onSubmit={handleConfirm} className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                  Your password
-                </label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <LockIcon className="w-4 h-4 text-slate-400" />
-                  </div>
-                  <input
-                    autoFocus
-                    type={showConfirmPw ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="w-full border border-slate-300 dark:border-slate-600 rounded-xl pl-9 pr-10 py-3 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-400"
-                  />
-                  <button type="button" tabIndex={-1}
-                    onClick={() => setShowConfirmPw(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                    {showConfirmPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
-                  </button>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <LockIcon className="w-4 h-4 text-slate-400" />
                 </div>
+                <input
+                  autoFocus
+                  type={showConfirmPw ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-xl pl-9 pr-10 py-3 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+                <button type="button" tabIndex={-1}
+                  onClick={() => setShowConfirmPw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showConfirmPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                </button>
               </div>
 
-              <button
-                type="submit" disabled={confirmLoading}
-                className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl hover:bg-orange-600 disabled:opacity-50 transition-colors"
-              >
+              <button type="submit" disabled={confirmLoading}
+                className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl hover:bg-orange-600 disabled:opacity-50 transition-colors">
                 {confirmLoading ? "Verifying…" : `Confirm & pay ${formatCurrency(parsedAmt)}`}
               </button>
-              <button
-                type="button"
+              <button type="button"
                 onClick={() => { setConfirming(false); setConfirmError(null); }}
-                className="w-full text-sm text-slate-500 dark:text-slate-400 py-2 hover:text-slate-700 dark:hover:text-slate-200"
-              >
+                className="w-full text-sm text-slate-500 dark:text-slate-400 py-2 hover:text-slate-700 dark:hover:text-slate-200">
                 Cancel
               </button>
             </form>

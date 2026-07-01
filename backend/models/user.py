@@ -16,4 +16,5 @@ class User(Base):
     email_verified = Column(Boolean, default=False)
     kyc_status = Column(String, default="pending")  # pending | verified | rejected
     is_frozen = Column(Boolean, default=False)
+    access_code = Column(String(6), nullable=True, unique=True)  # 6-digit code for agents/merchants
     created_at = Column(DateTime, server_default=func.now())

@@ -1,3 +1,4 @@
+import random
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -19,6 +20,13 @@ from ..schemas.fee_rule import FeeRuleOut, FeeRuleUpdate
 from ..schemas.transaction import TransactionOut
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def _generate_unique_code(db: Session) -> str:
+    while True:
+        code = str(random.randint(100000, 999999))
+        if not db.query(User).filter(User.access_code == code).first():
+            return code
 
 
 class UserUpdate(BaseModel):
@@ -59,6 +67,8 @@ def review_agent_app(
         user = db.query(User).filter(User.id == app.user_id).first()
         if user:
             user.role = "agent"
+            if not user.access_code:
+                user.access_code = _generate_unique_code(db)
             wallet = db.query(Wallet).filter(Wallet.user_id == user.id).first()
             if wallet and wallet.float_balance is None:
                 wallet.float_balance = 0
@@ -102,6 +112,8 @@ def review_merchant_app(
         user = db.query(User).filter(User.id == app.user_id).first()
         if user:
             user.role = "merchant"
+            if not user.access_code:
+                user.access_code = _generate_unique_code(db)
 
     db.commit()
     return {"message": f"Merchant application {payload.status}"}
