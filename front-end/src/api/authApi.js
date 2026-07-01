@@ -46,10 +46,10 @@ export function resendOtp(phone_number, purpose = "signup") {
   });
 }
 
-export function login(phone_number, password) {
+export function login(identifier, password) {
   return request("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ phone_number, password }),
+    body: JSON.stringify({ identifier, password }),
   });
 }
 

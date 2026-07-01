@@ -69,9 +69,18 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
+def _lookup_by_identifier(identifier: str, db: Session):
+    """Find user by email or phone number."""
+    identifier = identifier.strip()
+    if "@" in identifier:
+        return db.query(User).filter(User.email == identifier).first()
+    phone = identifier if identifier.startswith("+") else "+250" + identifier.lstrip("0")
+    return db.query(User).filter(User.phone_number == phone).first()
+
+
 @router.post("/verify-email")
 def verify_email(payload: OtpVerifyRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.phone_number == payload.phone_number).first()
+    user = _lookup_by_identifier(payload.phone_number, db)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -85,7 +94,7 @@ def verify_email(payload: OtpVerifyRequest, db: Session = Depends(get_db)):
 
 @router.post("/resend-otp")
 def resend_otp(payload: OtpResendRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.phone_number == payload.phone_number).first()
+    user = _lookup_by_identifier(payload.phone_number, db)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 

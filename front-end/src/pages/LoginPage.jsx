@@ -15,7 +15,7 @@ export default function LoginPage() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [phoneLocal, setPhoneLocal] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
@@ -34,14 +34,14 @@ export default function LoginPage() {
     }
   }, [location.state]);
 
-  const fullPhone = phoneLocal.startsWith("+") ? phoneLocal : "+250" + phoneLocal.replace(/\D/g, "");
+  const isEmail = identifier.includes("@");
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const data = await login(fullPhone, password);
+      const data = await login(identifier.trim(), password);
       signIn(data.access_token, data.user);
       const role = data.user.role;
       if (role === "admin") navigate("/admin");
@@ -49,12 +49,11 @@ export default function LoginPage() {
       else navigate("/dashboard");
     } catch (err) {
       if (err?.detail === "Email not verified") {
-        // Send OTP and switch to verification screen
-        try { await resendOtp(fullPhone, "signup"); } catch { /* ignore */ }
+        try { await resendOtp(identifier.trim(), "signup"); } catch { /* ignore */ }
         setVerifyMode(true);
         setTimeout(() => otpRefs.current[0]?.focus(), 100);
       } else {
-        setError(err?.detail ?? "Incorrect phone number or password.");
+        setError(err?.detail ?? "Invalid credentials. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -82,9 +81,8 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await verifyEmail(fullPhone, code);
-      // Email verified — now log in automatically
-      const data = await login(fullPhone, password);
+      await verifyEmail(identifier.trim(), code);
+      const data = await login(identifier.trim(), password);
       signIn(data.access_token, data.user);
       const role = data.user.role;
       if (role === "admin") navigate("/admin");
@@ -100,7 +98,7 @@ export default function LoginPage() {
   async function handleResendOtp() {
     setError(null);
     setOtp(["", "", "", "", "", ""]);
-    try { await resendOtp(fullPhone, "signup"); } catch { /* ignore */ }
+    try { await resendOtp(identifier.trim(), "signup"); } catch { /* ignore */ }
     setTimeout(() => otpRefs.current[0]?.focus(), 100);
   }
 
@@ -130,7 +128,8 @@ export default function LoginPage() {
             </div>
             <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-1">Verify your email</h2>
             <p className="text-slate-500 text-sm mb-6">
-              We sent a 6-digit code to the email address linked to <span className="font-semibold text-slate-700 dark:text-slate-300">{fullPhone}</span>
+              We sent a 6-digit code to the email linked to{" "}
+              <span className="font-semibold text-slate-700 dark:text-slate-300">{identifier}</span>
             </p>
 
             {error && (
@@ -239,7 +238,7 @@ export default function LoginPage() {
             Customer sign in
           </div>
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Welcome back</h2>
-          <p className="text-slate-500 text-sm mt-1 mb-7">Sign in with your phone number to access your wallet.</p>
+          <p className="text-slate-500 text-sm mt-1 mb-7">Sign in with your phone number or email address.</p>
 
           {info && (
             <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl px-3 py-2.5 mb-4">{info}</div>
@@ -251,22 +250,32 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                Phone Number
+                Phone Number or Email
               </label>
-              <div className="flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 transition-all">
-                <div className="flex items-center gap-1.5 px-3 bg-slate-50 dark:bg-slate-800 border-r border-slate-300 dark:border-slate-600 shrink-0">
-                  <RwandaFlagIcon className="w-5 h-3.5" />
-                  <span className="text-sm font-bold text-slate-600 dark:text-slate-300">+250</span>
+              <div className="flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 transition-all dark:border-slate-700">
+                <div className="flex items-center gap-1.5 px-3 bg-slate-50 dark:bg-slate-800 border-r border-slate-300 dark:border-slate-600 shrink-0 min-w-[56px] justify-center">
+                  {isEmail ? (
+                    <EnvelopeIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  ) : (
+                    <>
+                      <RwandaFlagIcon className="w-5 h-3.5" />
+                      <span className="text-sm font-bold text-slate-600 dark:text-slate-300">+250</span>
+                    </>
+                  )}
                 </div>
                 <input
-                  type="tel"
-                  value={phoneLocal}
-                  onChange={(e) => setPhoneLocal(e.target.value)}
-                  placeholder="788 123 456"
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="788 123 456 or email@example.com"
                   required
+                  autoComplete="username"
                   className="flex-1 px-3 py-3 text-sm outline-none bg-white dark:bg-slate-900 dark:text-white"
                 />
               </div>
+              <p className="text-[11px] text-slate-400 mt-1 pl-1">
+                {isEmail ? "Signing in with email address" : "Signing in with phone number (Rwanda +250)"}
+              </p>
             </div>
 
             <div>
@@ -283,6 +292,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
+                  autoComplete="current-password"
                   className="w-full border border-slate-300 rounded-xl pl-9 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition-all dark:bg-slate-900 dark:text-white dark:border-slate-700"
                 />
                 <button
