@@ -364,6 +364,7 @@ export default function PayMerchantPage() {
                 />
                 <button type="button" tabIndex={-1}
                   onClick={() => setShowConfirmPw(v => !v)}
+                  aria-label={showConfirmPw ? "Hide password" : "Show password"}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showConfirmPw ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                 </button>

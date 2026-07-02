@@ -31,3 +31,14 @@ export function listCredentials(token) {
 export function deleteCredential(token, credentialId) {
   return request(`/biometric/credentials/${credentialId}`, token, { method: "DELETE" });
 }
+
+export function authenticateBegin(token) {
+  return request("/biometric/authenticate/begin", token, { method: "POST" });
+}
+
+export function authenticateFinish(token, credential) {
+  return request("/biometric/authenticate/finish", token, {
+    method: "POST",
+    body: JSON.stringify({ credential }),
+  });
+}

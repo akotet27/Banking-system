@@ -82,7 +82,10 @@ export default function SidebarLayout({ children, pendingCount = 0 }) {
 
   const isAgent = user?.role === "agent";
   const isAdmin = user?.role === "admin";
-  const nav = isAdmin ? ADMIN_NAV : isAgent ? AGENT_NAV : CUSTOMER_NAV;
+  const isMerchant = user?.role === "merchant";
+  // Merchants already hold a role and can't re-apply (backend restricts /apply to role "customer"),
+  // so hide the link rather than let them click into a page that immediately bounces them back.
+  const nav = isAdmin ? ADMIN_NAV : isAgent ? AGENT_NAV : CUSTOMER_NAV.filter(item => item.to !== "/apply" || !isMerchant);
   const initials = getInitials(user?.full_name, user?.phone_number);
   const displayName = user?.full_name?.split(" ")[0] ?? user?.phone_number ?? "User";
 
@@ -110,7 +113,7 @@ export default function SidebarLayout({ children, pendingCount = 0 }) {
                 <LogoMark size={28} variant="dark" />
                 <span className="text-white font-bold text-lg tracking-tight">Ishimwe</span>
               </div>
-              <button onClick={() => setMobileOpen(false)} className="md:hidden text-slate-400 hover:text-white p-1">
+              <button onClick={() => setMobileOpen(false)} aria-label="Close menu" className="md:hidden text-slate-400 hover:text-white p-1">
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
@@ -164,7 +167,7 @@ export default function SidebarLayout({ children, pendingCount = 0 }) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile top bar */}
         <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-[#0B1D3E] shrink-0">
-          <button onClick={() => setMobileOpen(true)} className="text-white p-1">
+          <button onClick={() => setMobileOpen(true)} aria-label="Open menu" className="text-white p-1">
             <MenuIcon className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2">
@@ -172,7 +175,7 @@ export default function SidebarLayout({ children, pendingCount = 0 }) {
             <span className="text-white font-bold text-base">Ishimwe</span>
           </div>
           <div className="ml-auto">
-            <button onClick={toggleDark} className="text-slate-400 hover:text-white p-1">
+            <button onClick={toggleDark} aria-label={dark ? "Switch to light mode" : "Switch to dark mode"} className="text-slate-400 hover:text-white p-1">
               {dark ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
             </button>
           </div>

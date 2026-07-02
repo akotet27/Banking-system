@@ -257,6 +257,7 @@ export default function CashInPage() {
                   className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 />
                 <button type="button" onClick={() => setShowConfirmPw(v => !v)}
+                  aria-label={showConfirmPw ? "Hide password" : "Show password"}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showConfirmPw ? <EyeOffIcon /> : <EyeIcon />}
                 </button>

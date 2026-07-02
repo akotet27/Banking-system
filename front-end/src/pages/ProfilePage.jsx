@@ -294,6 +294,7 @@ export default function ProfilePage() {
                             </p>
                           </div>
                           <button onClick={() => handleDeleteCredential(c.id)}
+                            aria-label="Remove credential"
                             className="text-slate-400 hover:text-red-500 p-1">
                             <XIcon className="w-3.5 h-3.5" />
                           </button>

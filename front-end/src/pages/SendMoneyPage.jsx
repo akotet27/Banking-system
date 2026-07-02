@@ -5,8 +5,10 @@ import { useAuth } from "../contexts/AuthContext";
 import { sendMoney } from "../api/transactionApi";
 import { login } from "../api/authApi";
 import { getContacts, saveContact } from "../api/contactsApi";
+import { listCredentials, authenticateBegin, authenticateFinish } from "../api/biometricApi";
+import { prepareGetOptions, assertionToJSON } from "../utils/webauthn";
 import { formatCurrency, validatePhone } from "../utils/validation";
-import { CheckCircleIcon, RwandaFlagIcon, LockIcon, EyeIcon, EyeOffIcon } from "../components/Icons";
+import { CheckCircleIcon, RwandaFlagIcon, LockIcon, EyeIcon, EyeOffIcon, FingerprintIcon } from "../components/Icons";
 import { API_BASE } from "../api/base.js";
 
 function ContactChip({ contact, onSelect }) {
@@ -49,6 +51,11 @@ export default function SendMoneyPage() {
   const [contacts, setContacts] = useState([]);
   const [savingContact, setSavingContact] = useState(false);
   const [contactSaved, setContactSaved] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+
+  const [hasBiometric, setHasBiometric] = useState(false);
+  const [bioLoading, setBioLoading] = useState(false);
+  const [bioError, setBioError] = useState(null);
 
   const digits = phoneLocal.replace(/\D/g, "");
   const fullPhone = phoneLocal.startsWith("+") ? phoneLocal : "+250" + digits;
@@ -57,8 +64,13 @@ export default function SendMoneyPage() {
   const total = parsedAmt + fee;
   const ready = digits.length >= 9 && parsedAmt >= 1 && recipient && recipient !== "not_found";
 
+  const suggestions = digits.length > 0 && digits.length < 9
+    ? contacts.filter(c => c.role !== "merchant" && c.phone_number.replace(/\D/g, "").includes(digits))
+    : [];
+
   useEffect(() => {
     getContacts(token).then(setContacts).catch(() => {});
+    listCredentials(token).then(creds => setHasBiometric(creds.length > 0)).catch(() => {});
   }, [token]);
 
   useEffect(() => {
@@ -91,6 +103,7 @@ export default function SendMoneyPage() {
   function selectContact(contact) {
     const local = contact.phone_number.replace(/^\+250/, "");
     setPhoneLocal(local);
+    setSuggestOpen(false);
   }
 
   async function handleSaveContact() {
@@ -116,6 +129,7 @@ export default function SendMoneyPage() {
     setError(null);
     setConfirmPassword("");
     setConfirmError(null);
+    setBioError(null);
     setConfirming(true);
   }
 
@@ -139,6 +153,27 @@ export default function SendMoneyPage() {
       setConfirmError(err?.detail ?? "Transfer failed. Please try again.");
     } finally {
       setConfirmLoading(false);
+    }
+  }
+
+  async function handleBiometricConfirm() {
+    setBioError(null);
+    setBioLoading(true);
+    try {
+      const options = await authenticateBegin(token);
+      if (options._dev_mode) {
+        await authenticateFinish(token, null);
+      } else {
+        const assertion = await navigator.credentials.get({ publicKey: prepareGetOptions(options) });
+        await authenticateFinish(token, assertionToJSON(assertion));
+      }
+      const txn = await sendMoney(token, { recipient_phone: fullPhone, amount: parsedAmt });
+      setConfirming(false);
+      setSuccess(txn);
+    } catch (err) {
+      setBioError(err?.detail ?? err?.message ?? "Fingerprint verification failed. Use your password instead.");
+    } finally {
+      setBioLoading(false);
     }
   }
 
@@ -199,22 +234,50 @@ export default function SendMoneyPage() {
             <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
               Recipient phone number
             </label>
-            <div className="flex rounded-xl border border-slate-300 dark:border-slate-600 overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 transition-all">
-              <div className="flex items-center gap-1.5 px-3 bg-slate-50 dark:bg-slate-700 border-r border-slate-300 dark:border-slate-600 shrink-0">
-                <RwandaFlagIcon className="w-5 h-3.5" />
-                <span className="text-sm font-bold text-slate-600 dark:text-slate-300">+250</span>
+            <div className="relative">
+              <div className="flex rounded-xl border border-slate-300 dark:border-slate-600 overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 transition-all">
+                <div className="flex items-center gap-1.5 px-3 bg-slate-50 dark:bg-slate-700 border-r border-slate-300 dark:border-slate-600 shrink-0">
+                  <RwandaFlagIcon className="w-5 h-3.5" />
+                  <span className="text-sm font-bold text-slate-600 dark:text-slate-300">+250</span>
+                </div>
+                <input
+                  type="tel"
+                  value={phoneLocal}
+                  onChange={(e) => { setPhoneLocal(e.target.value); setSuggestOpen(true); }}
+                  onFocus={() => setSuggestOpen(true)}
+                  onBlur={() => setTimeout(() => setSuggestOpen(false), 150)}
+                  placeholder="788 123 456"
+                  required
+                  autoComplete="off"
+                  className="flex-1 px-3 py-3 text-sm outline-none bg-white dark:bg-slate-800 dark:text-white"
+                />
+                {digits.length >= 9 && !lookupLoading && recipient && recipient !== "not_found" && (
+                  <div className="flex items-center pr-3 text-emerald-500">
+                    <CheckCircleIcon className="w-5 h-5" />
+                  </div>
+                )}
               </div>
-              <input
-                type="tel"
-                value={phoneLocal}
-                onChange={(e) => setPhoneLocal(e.target.value)}
-                placeholder="788 123 456"
-                required
-                className="flex-1 px-3 py-3 text-sm outline-none bg-white dark:bg-slate-800 dark:text-white"
-              />
-              {digits.length >= 9 && !lookupLoading && recipient && recipient !== "not_found" && (
-                <div className="flex items-center pr-3 text-emerald-500">
-                  <CheckCircleIcon className="w-5 h-5" />
+
+              {suggestOpen && suggestions.length > 0 && (
+                <div className="absolute z-10 top-full left-0 right-0 mt-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden">
+                  {suggestions.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => selectContact(c)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center shrink-0">
+                        <span className="text-white text-xs font-bold">
+                          {(c.full_name ?? c.label ?? "?").trim().split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{c.label ?? c.full_name ?? c.phone_number}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{c.phone_number}</p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -319,7 +382,7 @@ export default function SendMoneyPage() {
               </div>
               <div>
                 <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Confirm transfer</h3>
-                <p className="text-xs text-slate-400">Enter your password to authorise</p>
+                <p className="text-xs text-slate-400">{hasBiometric ? "Use your fingerprint or password to authorise" : "Enter your password to authorise"}</p>
               </div>
             </div>
 
@@ -338,6 +401,31 @@ export default function SendMoneyPage() {
               </div>
             </div>
 
+            {bioError && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded-xl px-3 py-2 mb-3">{bioError}</div>
+            )}
+
+            {hasBiometric && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleBiometricConfirm}
+                  disabled={bioLoading || confirmLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 disabled:opacity-50 text-sm mb-3"
+                >
+                  {bioLoading
+                    ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    : <FingerprintIcon className="w-4 h-4" />}
+                  {bioLoading ? "Waiting for fingerprint…" : "Confirm with fingerprint"}
+                </button>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">or use password</span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                </div>
+              </>
+            )}
+
             {confirmError && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 text-sm rounded-xl px-3 py-2 mb-3">{confirmError}</div>
             )}
@@ -353,6 +441,7 @@ export default function SendMoneyPage() {
                   className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 />
                 <button type="button" onClick={() => setShowConfirmPw(v => !v)}
+                  aria-label={showConfirmPw ? "Hide password" : "Show password"}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showConfirmPw ? <EyeOffIcon /> : <EyeIcon />}
                 </button>

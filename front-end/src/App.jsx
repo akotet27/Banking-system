@@ -1,27 +1,29 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import DashboardPage from "./pages/DashboardPage";
-import SendMoneyPage from "./pages/SendMoneyPage";
-import PayMerchantPage from "./pages/PayMerchantPage";
-import HistoryPage from "./pages/HistoryPage";
-import ProfilePage from "./pages/ProfilePage";
-import CashInPage from "./pages/CashInPage";
-import CashOutPage from "./pages/CashOutPage";
-import AgentDashboardPage from "./pages/AgentDashboardPage";
-import AgentCommissionPage from "./pages/AgentCommissionPage";
-import AdminLoginPage from "./pages/AdminLoginPage";
-import AdminDashboardPage from "./pages/AdminDashboardPage";
-import AdminApprovalsPage from "./pages/AdminApprovalsPage";
-import AdminFeeRulesPage from "./pages/AdminFeeRulesPage";
-import AdminAuditLogPage from "./pages/AdminAuditLogPage";
-import AdminUsersPage from "./pages/AdminUsersPage";
-import KycPage from "./pages/KycPage";
 import LandingPage from "./pages/LandingPage";
-import ApplyPage from "./pages/ApplyPage";
+
+const RegisterPage = lazy(() => import("./pages/RegisterPage"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const SendMoneyPage = lazy(() => import("./pages/SendMoneyPage"));
+const PayMerchantPage = lazy(() => import("./pages/PayMerchantPage"));
+const HistoryPage = lazy(() => import("./pages/HistoryPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const CashInPage = lazy(() => import("./pages/CashInPage"));
+const CashOutPage = lazy(() => import("./pages/CashOutPage"));
+const AgentDashboardPage = lazy(() => import("./pages/AgentDashboardPage"));
+const AgentCommissionPage = lazy(() => import("./pages/AgentCommissionPage"));
+const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
+const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
+const AdminApprovalsPage = lazy(() => import("./pages/AdminApprovalsPage"));
+const AdminFeeRulesPage = lazy(() => import("./pages/AdminFeeRulesPage"));
+const AdminAuditLogPage = lazy(() => import("./pages/AdminAuditLogPage"));
+const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage"));
+const KycPage = lazy(() => import("./pages/KycPage"));
+const ApplyPage = lazy(() => import("./pages/ApplyPage"));
 
 function Spinner() {
   return (
@@ -88,6 +90,7 @@ export default function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
+          <Suspense fallback={<Spinner />}>
           <Routes>
             {/* Public */}
             <Route path="/login"           element={<LoginPage />} />
@@ -124,6 +127,7 @@ export default function App() {
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

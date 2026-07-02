@@ -16,6 +16,10 @@ class BiometricEnrollFinishRequest(BaseModel):
     credential: Dict[str, Any]  # WebAuthn RegistrationResponseJSON from browser
 
 
+class BiometricAuthenticateRequest(BaseModel):
+    credential: Optional[Dict[str, Any]] = None  # WebAuthn AuthenticationResponseJSON; None in dev mode
+
+
 class BiometricVerifyBeginRequest(BaseModel):
     session_id: int
 

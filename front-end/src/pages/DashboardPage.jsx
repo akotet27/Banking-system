@@ -143,6 +143,7 @@ export default function DashboardPage() {
                     </span>
                     <button
                       onClick={() => setBalanceHidden((v) => !v)}
+                      aria-label={balanceHidden ? "Show balance" : "Hide balance"}
                       className="text-white/50 hover:text-white"
                     >
                       {balanceHidden
