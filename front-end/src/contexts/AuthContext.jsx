@@ -11,9 +11,18 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [networkError, setNetworkError] = useState(false);
   const inactivityRef = useRef(null);
+  // signIn() already has a freshly-fetched user object (from /auth/login, /auth/verify-email,
+  // or a profile PATCH) — skip the redundant /users/me round trip that would otherwise fire
+  // on every token change and delay the first protected-route render.
+  const skipNextFetchRef = useRef(false);
 
   useEffect(() => {
     if (!token) {
+      setLoading(false);
+      return;
+    }
+    if (skipNextFetchRef.current) {
+      skipNextFetchRef.current = false;
       setLoading(false);
       return;
     }
@@ -59,6 +68,7 @@ export function AuthProvider({ children }) {
 
   function signIn(newToken, userData) {
     localStorage.setItem("ib_token", newToken);
+    skipNextFetchRef.current = true;
     setToken(newToken);
     setUser(userData);
     setNetworkError(false);
