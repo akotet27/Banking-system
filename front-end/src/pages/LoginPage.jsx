@@ -15,6 +15,7 @@ export default function LoginPage() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [loginMethod, setLoginMethod] = useState("phone"); // "phone" | "email"
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,7 +35,13 @@ export default function LoginPage() {
     }
   }, [location.state]);
 
-  const isEmail = identifier.includes("@");
+  const isEmail = loginMethod === "email";
+
+  function switchLoginMethod(method) {
+    setLoginMethod(method);
+    setIdentifier("");
+    setError(null);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -250,8 +257,34 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                Phone Number or Email
+                {isEmail ? "Email address" : "Phone Number"}
               </label>
+
+              <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-700 p-1 mb-2.5 bg-slate-50 dark:bg-slate-800">
+                <button
+                  type="button"
+                  onClick={() => switchLoginMethod("phone")}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                    !isEmail
+                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  }`}
+                >
+                  Phone number
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchLoginMethod("email")}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                    isEmail
+                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  }`}
+                >
+                  Email
+                </button>
+              </div>
+
               <div className="flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-orange-400 focus-within:border-orange-400 transition-all dark:border-slate-700">
                 <div className="flex items-center gap-1.5 px-3 bg-slate-50 dark:bg-slate-800 border-r border-slate-300 dark:border-slate-600 shrink-0 min-w-[56px] justify-center">
                   {isEmail ? (
@@ -267,15 +300,12 @@ export default function LoginPage() {
                   type="text"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="788 123 456 or email@example.com"
+                  placeholder={isEmail ? "email@example.com" : "788 123 456"}
                   required
                   autoComplete="username"
                   className="flex-1 px-3 py-3 text-sm outline-none bg-white dark:bg-slate-900 dark:text-white"
                 />
               </div>
-              <p className="text-[11px] text-slate-400 mt-1 pl-1">
-                {isEmail ? "Signing in with email address" : "Signing in with phone number (Rwanda +250)"}
-              </p>
             </div>
 
             <div>
