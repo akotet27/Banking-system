@@ -3,7 +3,7 @@ import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { ShieldCheckIcon, SearchIcon, DownloadIcon } from "../components/Icons";
 
-const BASE = "http://localhost:8000";
+import { API_BASE as BASE } from "../api/base.js";
 function authed(token) { return { Authorization: `Bearer ${token}` }; }
 
 async function exportAuditPDF(entries) {

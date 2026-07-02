@@ -6,6 +6,7 @@ import { confirmCashOut, initiateCashOut } from "../api/transactionApi";
 import { getSessionStatus } from "../api/sessionApi";
 import { formatCurrency } from "../utils/validation";
 import { CheckCircleIcon, BankNoteIcon, ClockIcon, ShieldCheckIcon, RwandaFlagIcon } from "../components/Icons";
+import { API_BASE } from "../api/base.js";
 
 const POLL_MS = 3000;
 const SESSION_SECONDS = 60; // 1-minute approval window shown to agent
@@ -41,7 +42,7 @@ export default function CashOutPage() {
     setError(null);
     setLookingUp(true);
     try {
-      const res = await fetch(`http://localhost:8000/users/lookup?phone=${encodeURIComponent(fullPhone)}`, {
+      const res = await fetch(`${API_BASE}/users/lookup?phone=${encodeURIComponent(fullPhone)}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("ib_token")}` },
       });
       if (!res.ok) throw new Error();

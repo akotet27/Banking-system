@@ -6,6 +6,7 @@ import { cashIn } from "../api/transactionApi";
 import { login } from "../api/authApi";
 import { formatCurrency } from "../utils/validation";
 import { CheckCircleIcon, InboxArrowDownIcon, RwandaFlagIcon, LockIcon, EyeIcon, EyeOffIcon } from "../components/Icons";
+import { API_BASE } from "../api/base.js";
 
 const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
 
@@ -34,7 +35,7 @@ export default function CashInPage() {
     setError(null);
     setLookingUp(true);
     try {
-      const res = await fetch(`http://localhost:8000/users/lookup?phone=${encodeURIComponent(fullPhone)}`, {
+      const res = await fetch(`${API_BASE}/users/lookup?phone=${encodeURIComponent(fullPhone)}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("ib_token")}` },
       });
       if (!res.ok) throw new Error();

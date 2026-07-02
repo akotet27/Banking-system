@@ -9,6 +9,7 @@ import {
 } from "../components/Icons";
 import { enrollBegin, enrollFinish, listCredentials, deleteCredential } from "../api/biometricApi";
 import { prepareCreateOptions, attestationToJSON } from "../utils/webauthn";
+import { API_BASE } from "../api/base.js";
 
 const RW_DISTRICTS = {
   "Kigali":   ["Gasabo", "Kicukiro", "Nyarugenge"],
@@ -90,7 +91,7 @@ export default function ProfilePage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch("http://localhost:8000/users/me", {
+      const res = await fetch(`${API_BASE}/users/me`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ full_name: editName.trim(), date_of_birth: editDob, location: editLocation }),

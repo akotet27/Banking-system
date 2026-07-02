@@ -4,7 +4,7 @@ import SidebarLayout from "../components/SidebarLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { ShieldCheckIcon, DocumentIcon, CheckCircleIcon, ClockIcon } from "../components/Icons";
 
-const BASE = "http://localhost:8000";
+import { API_BASE as BASE } from "../api/base.js";
 
 async function apiPost(path, token, body) {
   const res = await fetch(`${BASE}${path}`, {
