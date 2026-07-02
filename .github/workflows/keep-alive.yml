@@ -1,0 +1,18 @@
+name: Keep backend alive
+
+# Render's free tier spins the service down after ~15 minutes of no traffic,
+# which makes the next real request pay a multi-second cold start. Pinging
+# the root endpoint well inside that window keeps it warm.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend root endpoint
+        run: |
+          curl -sS -o /dev/null -w "status=%{http_code} time=%{time_total}s\n" \
+            https://banking-system-pyl5.onrender.com/ || true
